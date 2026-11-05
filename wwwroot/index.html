@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StockUPT - Sistema de Inventario</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        /* =====================================================================
+           StockUPT — Página de inicio (index.html)
+           Variables de marca UPT
+           ===================================================================== */
+        :root {
+            --upt-azul-oscuro: #0b1c30;
+            --upt-azul: #004885;
+            --upt-azul-claro: #1a60a7;
+            --upt-dorado: #c99a2e;
+            --upt-gris: #5c5f61;
+            --upt-fondo: #f8f9ff;
+            --upt-blanco: #ffffff;
+            --upt-sombra: 0 10px 30px rgba(11, 28, 48, 0.12);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: var(--upt-fondo);
+            color: var(--upt-azul-oscuro);
+        }
+
+        /* =====================================================================
+           NAVBAR
+           ===================================================================== */
+        .navbar-upt {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 40px;
+            background-color: var(--upt-azul-oscuro);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+        }
+
+            .navbar-upt .logo {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                text-decoration: none;
+                color: #fff;
+            }
+
+                .navbar-upt .logo i {
+                    font-size: 28px;
+                    color: var(--upt-dorado);
+                }
+
+                .navbar-upt .logo span {
+                    display: block;
+                    font-size: 19px;
+                    font-weight: 700;
+                    line-height: 1.1;
+                }
+
+                .navbar-upt .logo small {
+                    display: block;
+                    font-size: 11px;
+                    color: #b9c6d8;
+                    font-weight: 400;
+                }
+
+        .btn-login-nav {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background-color: var(--upt-dorado);
+            color: var(--upt-azul-oscuro);
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 14px;
+            padding: 10px 20px;
+            border-radius: 999px;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+            .btn-login-nav:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 6px 14px rgba(201, 154, 46, 0.4);
+            }
+
+        /* =====================================================================
+           CARRUSEL
+           ===================================================================== */
+        .carousel-upt {
+            position: relative;
+            width: 100%;
+            height: 480px;
+            overflow: hidden;
+            background-color: var(--upt-azul-oscuro);
+        }
+
+        .carousel-inner-upt {
+            display: flex;
+            width: 300%;
+            height: 100%;
+            transition: transform 0.9s cubic-bezier(0.65, 0, 0.35, 1);
+        }
+
+        .slide {
+            width: 33.3333%;
+            flex: 0 0 33.3333%;
+            height: 100%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-size: cover;
+            background-position: center;
+        }
+
+        .slide-1 {
+            background: linear-gradient(135deg, #0b1c30 0%, #004885 100%);
+        }
+
+        .slide-2 {
+            background: linear-gradient(135deg, #004885 0%, #1a60a7 100%);
+        }
+
+        .slide-3 {
+            background: linear-gradient(135deg, #0b1c30 0%, #1a60a7 100%);
+        }
+
+        .slide-overlay {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.06), transparent 60%);
+        }
+
+        .slide-content {
+            position: relative;
+            z-index: 2;
+            max-width: 640px;
+            text-align: center;
+            color: #fff;
+            padding: 0 24px;
+        }
+
+        .slide-icon {
+            font-size: 56px;
+            color: var(--upt-dorado);
+            margin-bottom: 18px;
+        }
+
+        .slide-content h2 {
+            font-size: 32px;
+            margin: 0 0 14px 0;
+            font-weight: 700;
+        }
+
+        .slide-content p {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #dbe6f5;
+            margin: 0;
+        }
+
+        .carousel-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            color: #fff;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 3;
+            font-size: 16px;
+            transition: background 0.2s ease;
+        }
+
+            .carousel-btn:hover {
+                background: rgba(255, 255, 255, 0.3);
+            }
+
+            .carousel-btn.prev {
+                left: 24px;
+            }
+
+            .carousel-btn.next {
+                right: 24px;
+            }
+
+        .carousel-dots {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 3;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.35);
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.2s ease;
+        }
+
+            .dot.active {
+                background: var(--upt-dorado);
+                transform: scale(1.2);
+            }
+
+        /* =====================================================================
+           SECCIÓN INFO (tarjetas)
+           ===================================================================== */
+        .seccion-info {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 70px 24px 50px 24px;
+        }
+
+        .titulo-seccion {
+            text-align: center;
+            margin-bottom: 44px;
+        }
+
+            .titulo-seccion h2 {
+                font-size: 28px;
+                margin: 0 0 8px 0;
+                color: var(--upt-azul-oscuro);
+            }
+
+            .titulo-seccion p {
+                margin: 0;
+                color: var(--upt-gris);
+                font-size: 15px;
+            }
+
+            .titulo-seccion .linea {
+                width: 60px;
+                height: 4px;
+                background-color: var(--upt-dorado);
+                margin: 18px auto 0 auto;
+                border-radius: 2px;
+            }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 24px;
+        }
+
+        .info-card {
+            background-color: var(--upt-blanco);
+            border-radius: 14px;
+            padding: 28px 22px;
+            text-align: center;
+            box-shadow: var(--upt-sombra);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+            .info-card:hover {
+                transform: translateY(-6px);
+                box-shadow: 0 16px 34px rgba(11, 28, 48, 0.18);
+            }
+
+            .info-card .card-icon {
+                font-size: 34px;
+                color: var(--upt-azul);
+                margin-bottom: 16px;
+            }
+
+            .info-card h3 {
+                font-size: 17px;
+                margin: 0 0 10px 0;
+                color: var(--upt-azul-oscuro);
+            }
+
+            .info-card p {
+                font-size: 14px;
+                color: var(--upt-gris);
+                line-height: 1.55;
+                margin: 0;
+            }
+
+        /* =====================================================================
+           SECCIÓN ESTADÍSTICAS
+           ===================================================================== */
+        .seccion-stats {
+            background-color: var(--upt-azul-oscuro);
+            padding: 54px 24px;
+        }
+
+        .stats-grid {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 24px;
+            text-align: center;
+        }
+
+        .stat-item .numero {
+            font-size: 34px;
+            font-weight: 700;
+            color: var(--upt-dorado);
+            margin-bottom: 6px;
+        }
+
+        .stat-item .etiqueta {
+            font-size: 13px;
+            color: #c6d3e3;
+            letter-spacing: 0.3px;
+        }
+
+        /* =====================================================================
+           SECCIÓN CTA
+           ===================================================================== */
+        .seccion-cta {
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 70px 24px;
+            text-align: center;
+        }
+
+            .seccion-cta h2 {
+                font-size: 26px;
+                margin: 0 0 14px 0;
+                color: var(--upt-azul-oscuro);
+            }
+
+            .seccion-cta p {
+                color: var(--upt-gris);
+                font-size: 15px;
+                line-height: 1.6;
+                margin: 0 0 28px 0;
+            }
+
+        .cta-botones {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+            .cta-botones a {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                text-decoration: none;
+                font-weight: 700;
+                font-size: 14px;
+                padding: 12px 26px;
+                border-radius: 999px;
+                transition: transform 0.15s ease, box-shadow 0.15s ease;
+            }
+
+                .cta-botones a:not(.btn-cta-outline) {
+                    background-color: var(--upt-azul);
+                    color: #fff;
+                }
+
+                    .cta-botones a:not(.btn-cta-outline):hover {
+                        transform: translateY(-1px);
+                        box-shadow: 0 8px 18px rgba(0, 72, 133, 0.35);
+                    }
+
+        .btn-cta-outline {
+            background-color: transparent;
+            color: var(--upt-azul);
+            border: 2px solid var(--upt-azul);
+        }
+
+            .btn-cta-outline:hover {
+                background-color: var(--upt-azul);
+                color: #fff;
+            }
+
+        /* =====================================================================
+           FOOTER
+           ===================================================================== */
+        footer {
+            background-color: var(--upt-azul-oscuro);
+            color: #c6d3e3;
+            text-align: center;
+            padding: 22px 16px;
+            font-size: 13px;
+        }
+
+            footer span {
+                color: var(--upt-dorado);
+                font-weight: 600;
+            }
+
+        /* =====================================================================
+           RESPONSIVE
+           ===================================================================== */
+        @media (max-width: 640px) {
+            .navbar-upt {
+                padding: 12px 18px;
+            }
+
+            .carousel-upt {
+                height: 420px;
+            }
+
+            .slide-content h2 {
+                font-size: 24px;
+            }
+
+            .seccion-info,
+            .seccion-cta {
+                padding-left: 18px;
+                padding-right: 18px;
+            }
+        }
+    </style>
+
+</head>
+<body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar-upt">
+        <a href="index.html" class="logo">
+            <i class="fas fa-toolbox"></i>
+            <div>
+                <span>StockUPT</span>
+                <small>Universidad Politécnica de Tulancingo</small>
+            </div>
+        </a>
+
+        <a href="login.html" class="btn-login-nav">
+            <i class="fas fa-sign-in-alt"></i>
+            Iniciar sesión
+        </a>
+    </nav>
+
+    <!-- CARRUSEL -->
+    <div class="carousel-upt" id="carrusel">
+
+        <div class="carousel-inner-upt" id="carruselInner">
+
+            <div class="slide slide-1">
+                <div class="slide-overlay"></div>
+
+                <div class="slide-content">
+                    <i class="fas fa-warehouse slide-icon"></i>
+
+                    <h2>Almacén de Herramientas UPT</h2>
+
+                    <p>
+                        Sistema centralizado para la gestión, préstamo y control de herramientas destinadas al mantenimiento de las instalaciones universitarias.
+                    </p>
+                </div>
+            </div>
+
+            <div class="slide slide-2">
+                <div class="slide-overlay"></div>
+
+                <div class="slide-content">
+                    <i class="fas fa-tools slide-icon"></i>
+
+                    <h2>Control Total de Inventario</h2>
+
+                    <p>
+                        Registra entradas, salidas y devoluciones de herramientas en tiempo real.
+                        Mantén el inventario siempre actualizado y sin pérdidas.
+                    </p>
+                </div>
+            </div>
+
+            <div class="slide slide-3">
+                <div class="slide-overlay"></div>
+
+                <div class="slide-content">
+                    <i class="fas fa-clipboard-check slide-icon"></i>
+
+                    <h2>Préstamos y Seguimiento</h2>
+
+                    <p>
+                        Asigna herramientas a los técnicos de mantenimiento con fechas de entrega y seguimiento automatizado para garantizar su devolución.
+                    </p>
+                </div>
+            </div>
+
+        </div>
+
+        <button class="carousel-btn prev" onclick="moverSlide(-1)">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+
+        <button class="carousel-btn next" onclick="moverSlide(1)">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+
+        <div class="carousel-dots">
+            <div class="dot active" onclick="irASlide(0)"></div>
+            <div class="dot" onclick="irASlide(1)"></div>
+            <div class="dot" onclick="irASlide(2)"></div>
+        </div>
+
+    </div>
+
+    <!-- INFORMACIÓN -->
+    <section class="seccion-info">
+
+        <div class="titulo-seccion">
+            <h2>¿Qué ofrece el sistema?</h2>
+
+            <p>
+                Todo lo que necesita el departamento de mantenimiento en un solo lugar
+            </p>
+
+            <div class="linea"></div>
+        </div>
+
+        <div class="cards-grid">
+
+            <div class="info-card">
+                <i class="fas fa-boxes-stacked card-icon"></i>
+
+                <h3>Inventario en tiempo real</h3>
+
+                <p>
+                    Consulta la disponibilidad exacta de cada herramienta en el almacén al instante.
+                </p>
+            </div>
+
+            <div class="info-card">
+                <i class="fas fa-hand-holding card-icon"></i>
+
+                <h3>Registro de préstamos</h3>
+
+                <p>
+                    Lleva un historial completo de quién solicita y devuelve cada herramienta.
+                </p>
+            </div>
+
+            <div class="info-card">
+                <i class="fas fa-bell card-icon"></i>
+
+                <h3>Alertas de vencimiento</h3>
+
+                <p>
+                    Recibe notificaciones cuando un préstamo está próximo a vencer o se retrase.
+                </p>
+            </div>
+
+            <div class="info-card">
+                <i class="fas fa-chart-bar card-icon"></i>
+
+                <h3>Reportes y estadísticas</h3>
+
+                <p>
+                    Genera reportes de uso, mantenimiento y rotación de herramientas fácilmente.
+                </p>
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- ESTADÍSTICAS -->
+    <section class="seccion-stats">
+
+        <div class="stats-grid">
+
+            <div class="stat-item">
+                <div class="numero">500+</div>
+                <div class="etiqueta">Herramientas registradas</div>
+            </div>
+
+            <div class="stat-item">
+                <div class="numero">30+</div>
+                <div class="etiqueta">Técnicos activos</div>
+            </div>
+
+            <div class="stat-item">
+                <div class="numero">100%</div>
+                <div class="etiqueta">Trazabilidad</div>
+            </div>
+
+            <div class="stat-item">
+                <div class="numero">24/7</div>
+                <div class="etiqueta">Disponible en línea</div>
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- CTA -->
+    <section class="seccion-cta">
+
+        <h2>¿Eres parte del equipo de mantenimiento?</h2>
+
+        <p>
+            Accede con tu cuenta institucional para gestionar préstamos,
+            consultar el inventario y mucho más.
+        </p>
+
+        <div class="cta-botones">
+
+            <a href="login.html">
+                <i class="fas fa-sign-in-alt"></i>
+                Iniciar sesión
+            </a>
+
+            <a href="index.html" class="btn-cta-outline">
+                <i class="fas fa-home"></i>
+                Ir al inicio
+            </a>
+
+        </div>
+
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <p>
+            &copy; 2026
+            <span>Universidad Politécnica de Tulancingo</span>
+            — Sistema de Almacén de Herramientas para Mantenimiento
+        </p>
+    </footer>
+
+    <script>
+        let slideActual = 0;
+        const total = 3;
+        const INTERVALO = 6000; // 6 segundos por slide
+        let temporizador;
+
+        function actualizarCarrusel() {
+            // Cada slide ocupa 1/3 del contenedor interno (300%)
+            document.getElementById('carruselInner').style.transform =
+                `translateX(-${slideActual * (100 / total)}%)`;
+
+            document.querySelectorAll('.dot').forEach((dot, index) => {
+                dot.classList.toggle('active', index === slideActual);
+            });
+        }
+
+        function moverSlide(direccion) {
+            slideActual = (slideActual + direccion + total) % total;
+            actualizarCarrusel();
+            reiniciarAuto();
+        }
+
+        function irASlide(numero) {
+            slideActual = numero;
+            actualizarCarrusel();
+            reiniciarAuto();
+        }
+
+        function iniciarAuto() {
+            temporizador = setInterval(() => {
+                slideActual = (slideActual + 1) % total;
+                actualizarCarrusel();
+            }, INTERVALO);
+        }
+
+        function reiniciarAuto() {
+            clearInterval(temporizador);
+            iniciarAuto();
+        }
+
+        // Pausa al pasar el mouse por encima
+        const carrusel = document.getElementById('carrusel');
+        carrusel.addEventListener('mouseenter', () => clearInterval(temporizador));
+        carrusel.addEventListener('mouseleave', iniciarAuto);
+
+        iniciarAuto();
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Anaqueles</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f9;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background: #2c3e50;
+            color: white;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1000px;
+            margin: 20px auto;
+        }
+
+        .form-box {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+
+        button {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+            button:hover {
+                background: #219150;
+            }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+            .card h3 {
+                margin: 0;
+                color: #2c3e50;
+            }
+
+        .delete {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: red;
+            border: none;
+            color: white;
+            border-radius: 5px;
+            padding: 5px 8px;
+            cursor: pointer;
+        }
+
+        .tag {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .empty-msg {
+            text-align: center;
+            color: #888;
+            padding: 20px;
+        }
+    </style>
+
+</head>
+<body>
+
+    <header>
+        <h1>📦 Sistema de Anaqueles</h1>
+    </header>
+
+    <div class="container">
+
+        <div class="form-box">
+
+            <div class="sidebar-logout">
+                <a asp-action="Logout" asp-controller="Account" href="Dashbord.html" title="Cerrar sesión">
+                    ⬅
+                </a>
+            </div>
+            <h2>Registrar Anaquel</h2>
+
+            <input type="text" id="nombre" placeholder="Nombre del anaquel (ej: A-01)">
+            <input type="text" id="contenido" placeholder="Contenido (ej: medicinas, papelería)">
+
+            <label for="anaquelSelect">Selecciona una Anaquel:</label>
+            <select id="anaquelSelect" name="Anaquel">
+                <option value="">-- Elige una opción --</option>
+                <option value="Anaquel 1">Anaquel 1</option>
+                <option value="Anaquel 2">Anaquel 2</option>
+                <option value="Anaquel 3">Anaquel 3</option>
+                <option value="Anaquel 4">Anaquel 4</option>
+                <option value="Anaquel 5">Anaquel 5</option>
+                <option value="Anaquel 6">Anaquel 6</option>
+                <option value="Anaquel 7">Anaquel 7</option>
+                <option value="Anaquel 8">Anaquel 8</option>
+                <option value="Anaquel 9">Anaquel 9</option>
+                <option value="Anaquel 10">Anaquel 10</option>
+                <option value="Anaquel 11">Anaquel 11</option>
+                <option value="Anaquel 12">Anaquel 12</option>
+                <option value="Anaquel 13">Anaquel 13</option>
+                <option value="Anaquel 14">Anaquel 14</option>
+                <option value="Anaquel 15">Anaquel 15</option>
+                <option value="Anaquel 16">Anaquel 16</option>
+                <option value="Anaquel 17">Anaquel 17</option>
+                <option value="Anaquel 18">Anaquel 18</option>
+                <option value="Anaquel 19">Anaquel 19</option>
+                <option value="Anaquel 20">Anaquel 20</option>
+
+            </select>
+
+            <label for="nivelSelect">Selecciona el nivel:</label>
+            <select id="nivelSelect" name="peldaño">
+                <option value="">-- Elige una opción --</option>
+                <option value="Nivel 1">Nivel 1</option>
+                <option value="Nivel 2">Nivel 2</option>
+                <option value="Nivel 3">Nivel 3</option>
+                <option value="Nivel 4">Nivel 4</option>
+                <option value="Nivel 5">Nivel 5</option>
+            </select>
+
+            <textarea id="descripcion" placeholder="Descripción del anaquel"></textarea>
+
+            <button onclick="agregarAnaquel()">Guardar Anaquel</button>
+        </div>
+
+        <div class="grid" id="lista"></div>
+        <div class="empty-msg" id="empty-msg" style="display:none;">No hay anaqueles registrados aún.</div>
+
+    </div>
+
+    <script>
+        const API_URL = "http://localhost:3000";
+        let anaqueles = [];
+
+        // Cargar los anaqueles reales desde el backend
+        async function cargarAnaqueles() {
+            try {
+                const respuesta = await fetch(`${API_URL}/anaqueles`);
+                anaqueles = await respuesta.json();
+                mostrarAnaqueles();
+            } catch (error) {
+                console.error("Error al cargar anaqueles:", error);
+                alert("No se pudo conectar con el servidor. ¿Está corriendo el backend?");
+            }
+        }
+
+        function mostrarAnaqueles() {
+            const lista = document.getElementById("lista");
+            const emptyMsg = document.getElementById("empty-msg");
+            lista.innerHTML = "";
+
+            if (anaqueles.length === 0) {
+                emptyMsg.style.display = "block";
+                return;
+            }
+            emptyMsg.style.display = "none";
+
+            anaqueles.forEach((a) => {
+                const ubicacionTexto = a.ubicacion ? a.ubicacion : "Sin ubicación";
+                lista.innerHTML += `
+            <div class="card">
+                <button class="delete" onclick="eliminar(${a.id_anaquel})">X</button>
+                <h3>${a.codigo}</h3>
+                <span class="tag">${a.contenido || "Sin contenido"}</span>
+                <p>${a.descripcion || ""}</p>
+                <p style="color:#888; font-size:12px; margin-top:8px;">${ubicacionTexto}</p>
+            </div>
+            `;
+            });
+        }
+
+        async function agregarAnaquel() {
+            const nombre = document.getElementById("nombre").value.trim();
+            const contenido = document.getElementById("contenido").value.trim();
+            const descripcion = document.getElementById("descripcion").value.trim();
+            const anaquelSel = document.getElementById("anaquelSelect").value;
+            const nivelSel = document.getElementById("nivelSelect").value;
+
+            if (!nombre || !contenido) {
+                alert("Por favor llena los campos obligatorios");
+                return;
+            }
+
+            const ubicacion = [anaquelSel, nivelSel].filter(Boolean).join(" - ");
+
+            try {
+                const respuesta = await fetch(`${API_URL}/anaqueles`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        codigo: nombre,
+                        ubicacion: ubicacion || null,
+                        descripcion: descripcion,
+                        contenido: contenido
+                    })
+                });
+
+                if (!respuesta.ok) {
+                    const err = await respuesta.json();
+                    throw new Error(err.error || "Error al guardar");
+                }
+
+                document.getElementById("nombre").value = "";
+                document.getElementById("contenido").value = "";
+                document.getElementById("descripcion").value = "";
+                document.getElementById("anaquelSelect").value = "";
+                document.getElementById("nivelSelect").value = "";
+
+                await cargarAnaqueles();
+            } catch (error) {
+                console.error(error);
+                alert("Error al guardar el anaquel: " + error.message);
+            }
+        }
+
+        async function eliminar(id) {
+            if (!confirm("¿Seguro que quieres eliminar este anaquel?")) return;
+
+            try {
+                const respuesta = await fetch(`${API_URL}/anaqueles/${id}`, {
+                    method: "DELETE"
+                });
+
+                if (!respuesta.ok) {
+                    throw new Error("No se pudo eliminar");
+                }
+
+                await cargarAnaqueles();
+            } catch (error) {
+                console.error(error);
+                alert("Error al eliminar el anaquel.");
+            }
+        }
+
+        // Carga inicial desde el backend (ya no desde localStorage)
+        cargarAnaqueles();
+    </script>
+
+</body>
+</html>

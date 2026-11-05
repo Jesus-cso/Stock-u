@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Empleados - Panel de Control</title>
+    <style>
+        :root {
+            --bg-primary: #f8fafc;
+            --bg-sidebar: #0f172a;
+            --sidebar-hover: #1e293b;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --text-main: #334155;
+            --text-muted: #64748b;
+            --card-bg: #ffffff;
+            --border-color: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+        }
+
+        nav {
+            width: 280px;
+            background: var(--bg-sidebar);
+            color: #fff;
+            height: 100vh;
+            padding: 24px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            position: sticky;
+            top: 0;
+        }
+
+            nav h2 {
+                margin-top: 0;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                color: var(--text-muted);
+                margin-bottom: 20px;
+            }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+            .form-group label {
+                display: block;
+                font-size: 12px;
+                color: #94a3b8;
+                margin-bottom: 6px;
+                font-weight: 500;
+            }
+
+            .form-group input, .form-group select {
+                width: 100%;
+                padding: 10px 12px;
+                background: var(--sidebar-hover);
+                border: 1px solid #334155;
+                border-radius: 6px;
+                color: #fff;
+                font-size: 13px;
+                box-sizing: border-box;
+                transition: border-color 0.2s;
+            }
+
+                .form-group input:focus, .form-group select:focus {
+                    outline: none;
+                    border-color: var(--accent);
+                }
+
+        button.btn-submit {
+            width: 100%;
+            padding: 12px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, box-shadow 0.2s;
+            margin-top: 10px;
+        }
+
+            button.btn-submit:hover {
+                background: var(--accent-hover);
+                box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+            }
+
+            button.btn-submit:disabled {
+                background: #64748b;
+                cursor: not-allowed;
+            }
+
+        .form-error {
+            color: #fca5a5;
+            font-size: 12px;
+            margin-top: 8px;
+            display: none;
+        }
+
+        .content {
+            flex: 1;
+            padding: 40px;
+            height: 100vh;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+
+        .area h2 {
+            color: #0f172a;
+            font-size: 28px;
+            font-weight: 700;
+            margin-top: 0;
+            margin-bottom: 8px;
+        }
+
+        .area p {
+            color: var(--text-muted);
+            font-size: 16px;
+            margin-top: 0;
+            margin-bottom: 32px;
+        }
+
+        .table-container {
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02), 0 4px 12px rgba(0,0,0,0.03);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            background: #f8fafc;
+            padding: 16px 24px;
+            color: #1e293b;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.05em;
+        }
+
+        td {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-main);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: #f8fafc;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            background: #f1f5f9;
+            color: #475569;
+        }
+
+        .badge-inactivo {
+            background: #fef2f2;
+            color: #ef4444;
+        }
+
+        .btn-delete {
+            background: none;
+            border: none;
+            color: #ef4444;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 13px;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+            .btn-delete:hover {
+                background: #fef2f2;
+            }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <h2>Registrar Empleado</h2>
+        <form id="empleado-form">
+            <a href="Dashbord.html" title="Volver al menú">
+                ⬅
+            </a>
+            <div class="form-group">
+                <label for="numControl">Número de Control / Matrícula</label>
+                <input type="text" id="numControl" placeholder="Ej. EMP-1024" required>
+            </div>
+
+            <div class="form-group">
+                <label for="nombre">Nombre Completo</label>
+                <input type="text" id="nombre" placeholder="Ej. Carlos Mendoza" required>
+            </div>
+
+            <div class="form-group">
+                <label for="area">Área</label>
+                <input type="text" id="area" placeholder="Ej. Sistemas">
+            </div>
+
+            <div class="form-group">
+                <label for="telefono">Teléfono</label>
+                <input type="tel" id="telefono" placeholder="Ej. 5512345678">
+            </div>
+
+            <button type="submit" class="btn-submit" id="btnSubmit">Agregar a la Tabla</button>
+            <div class="form-error" id="formError"></div>
+        </form>
+    </nav>
+
+    <div class="content">
+        <div class="area">
+            <h2>Plantilla de Personal Activo</h2>
+            <p>Base de datos general de los miembros registrados en el sistema.</p>
+
+            <div class="table-container">
+                <table id="tabla-empleados">
+                    <thead>
+                        <tr>
+                            <th>No. Control</th>
+                            <th>Nombre Completo</th>
+                            <th>Área</th>
+                            <th>Teléfono</th>
+                            <th>Estado</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-empleados"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    const API_URL = "http://localhost:3000";
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const formulario = document.getElementById("empleado-form");
+      const tbody = document.getElementById("tbody-empleados");
+      const btnSubmit = document.getElementById("btnSubmit");
+      const formError = document.getElementById("formError");
+
+      let listaEmpleados = [];
+
+      // Cargar miembros reales desde el backend
+      async function cargarEmpleados() {
+        try {
+          const respuesta = await fetch(`${API_URL}/miembros`);
+          listaEmpleados = await respuesta.json();
+          actualizarTabla();
+        } catch (error) {
+          console.error("Error al cargar miembros:", error);
+          tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No se pudo conectar con el servidor. ¿Está corriendo el backend?</td></tr>`;
+        }
+      }
+
+      const actualizarTabla = () => {
+        tbody.innerHTML = "";
+
+        if (listaEmpleados.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No hay empleados registrados actualmente. Usa el panel izquierdo.</td></tr>`;
+          return;
+        }
+
+        listaEmpleados.forEach((empleado) => {
+          const fila = document.createElement("tr");
+          const estadoBadge = empleado.activo
+            ? `<span class="badge">Activo</span>`
+            : `<span class="badge badge-inactivo">Inactivo</span>`;
+
+          fila.innerHTML = `
+            <td style="font-weight: 600; color: #0f172a;">${empleado.matricula}</td>
+            <td>${empleado.nombre}</td>
+            <td>${empleado.area ? `<span class="badge">${empleado.area}</span>` : ''}</td>
+            <td>${empleado.telefono || ''}</td>
+            <td>${estadoBadge}</td>
+            <td><button class="btn-delete" data-id="${empleado.id_miembro}">Eliminar</button></td>
+          `;
+          tbody.appendChild(fila);
+        });
+
+        // Conectar los botones de eliminar recién creados
+        tbody.querySelectorAll(".btn-delete").forEach(btn => {
+          btn.addEventListener("click", () => eliminarEmpleado(btn.dataset.id));
+        });
+      };
+
+      formulario.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        formError.style.display = "none";
+
+        const nuevoEmpleado = {
+          matricula: document.getElementById("numControl").value.trim(),
+          nombre: document.getElementById("nombre").value.trim(),
+          area: document.getElementById("area").value.trim(),
+          telefono: document.getElementById("telefono").value.trim()
+        };
+
+        btnSubmit.disabled = true;
+        btnSubmit.textContent = "Guardando...";
+
+        try {
+          const respuesta = await fetch(`${API_URL}/miembros`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(nuevoEmpleado)
+          });
+
+          const datos = await respuesta.json();
+
+          if (!respuesta.ok) {
+            throw new Error(datos.error || "No se pudo guardar el empleado.");
+          }
+
+          formulario.reset();
+          await cargarEmpleados();
+        } catch (error) {
+          formError.textContent = "⚠ " + error.message;
+          formError.style.display = "block";
+        } finally {
+          btnSubmit.disabled = false;
+          btnSubmit.textContent = "Agregar a la Tabla";
+        }
+      });
+
+      window.eliminarEmpleado = async (id) => {
+        if (!confirm("¿Estás seguro de que deseas eliminar este registro?")) return;
+
+        try {
+          const respuesta = await fetch(`${API_URL}/miembros/${id}`, {
+            method: "DELETE"
+          });
+
+          if (!respuesta.ok) {
+            throw new Error("No se pudo eliminar el registro.");
+          }
+
+          await cargarEmpleados();
+        } catch (error) {
+          alert("Error al eliminar: " + error.message);
+        }
+      };
+
+      cargarEmpleados();
+    });
+    </script>
+</body>
+</html>

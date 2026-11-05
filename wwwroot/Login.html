@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar sesión</title>
+
+    <!-- Solución al error favicon.ico (net::ERR_FILE_NOT_FOUND) -->
+    <link rel="shortcut icon" href="#">
+
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #f3f4f6;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 14px;
+            border: 1px solid #e5e7eb;
+            padding: 2.5rem 2rem;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, .06);
+        }
+
+        .logo {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: #eff6ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.25rem;
+            font-size: 24px;
+        }
+
+        h1 {
+            font-size: 22px;
+            font-weight: 600;
+            text-align: center;
+            color: #111827;
+            margin-bottom: 4px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #6b7280;
+            text-align: center;
+            margin-bottom: 1.75rem;
+        }
+
+        label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #374151;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .field {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+            .field svg.ico {
+                position: absolute;
+                left: 12px;
+                bottom: 11px;
+                width: 18px;
+                height: 18px;
+                color: #9ca3af;
+                pointer-events: none;
+            }
+
+        .toggle-btn {
+            position: absolute;
+            right: 10px;
+            bottom: 6px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #9ca3af;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px;
+        }
+
+        input[type=text],
+        input[type=password] {
+            width: 100%;
+            padding: 10px 12px 10px 38px;
+            font-size: 14px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            background: #fff;
+            color: #111827;
+            outline: none;
+            transition: border-color .15s, box-shadow .15s;
+        }
+
+        input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, .15);
+        }
+
+        .row-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+            .row-top label {
+                margin: 0;
+            }
+
+        .forgot {
+            font-size: 13px;
+            color: #3b82f6;
+            text-decoration: none;
+        }
+
+            .forgot:hover {
+                text-decoration: underline;
+            }
+
+        .check-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 1.25rem;
+        }
+
+            .check-row input {
+                width: 15px;
+                height: 15px;
+                accent-color: #3b82f6;
+            }
+
+            .check-row label {
+                font-size: 13px;
+                color: #6b7280;
+                cursor: pointer;
+                margin: 0;
+                font-weight: 400;
+            }
+
+        .btn-submit {
+            width: 100%;
+            padding: 11px;
+            font-size: 14px;
+            font-weight: 600;
+            background: #3b82f6;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: background .15s, transform .1s;
+        }
+
+            .btn-submit:hover {
+                background: #2563eb;
+            }
+
+            .btn-submit:active {
+                transform: scale(.98);
+            }
+
+            .btn-submit:disabled {
+                background: #93c5fd;
+                cursor: not-allowed;
+            }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 1.25rem 0;
+            color: #9ca3af;
+            font-size: 12px;
+        }
+
+            .divider::before,
+            .divider::after {
+                content: '';
+                flex: 1;
+                height: 1px;
+                background: #e5e7eb;
+            }
+
+        .btn-google {
+            width: 100%;
+            padding: 10px;
+            font-size: 13px;
+            background: #fff;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .register {
+            text-align: center;
+            font-size: 13px;
+            color: #6b7280;
+            margin-top: 1.25rem;
+        }
+
+            .register a {
+                color: #3b82f6;
+                text-decoration: none;
+                font-weight: 500;
+            }
+
+        .error-msg {
+            font-size: 12px;
+            color: #ef4444;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .success-msg {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 13px;
+            color: #15803d;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .server-error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 13px;
+            color: #b91c1c;
+            margin-bottom: 1rem;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <div class="card">
+            <div class="logo">🏢</div>
+            <h1>Iniciar sesión</h1>
+            <p class="subtitle">Ingresa tus credenciales para continuar</p>
+
+            <div class="success-msg" id="successMsg"></div>
+            <div class="server-error" id="serverError"></div>
+
+            <form id="loginForm" novalidate>
+                <!-- NÚMERO DE CONTROL -->
+                <div class="field">
+                    <label for="number">Número de Control</label>
+                    <svg class="ico" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <input id="number" name="numcontrol" placeholder="Número de control" type="text" autocomplete="username">
+                    <div class="error-msg" id="numerror">⚠ Ingresa un número de control válido.</div>
+                </div>
+
+                <!-- CONTRASEÑA -->
+                <div class="field">
+                    <div class="row-top">
+                        <label for="password">Contraseña</label>
+                        <a class="forgot" href="#">¿Olvidaste tu contraseña?</a>
+                    </div>
+                    <svg class="ico" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <rect height="11" rx="2" width="18" x="3" y="11"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    <input id="password" name="password" placeholder="••••••••" type="password" autocomplete="current-password">
+                    <button type="button" class="toggle-btn" id="toggleBtn">👁</button>
+                    <div class="error-msg" id="passErr">⚠ La contraseña debe tener al menos 6 caracteres.</div>
+                </div>
+
+                <!-- RECORDAR SESIÓN -->
+                <div class="check-row">
+                    <input id="remember" name="remember" type="checkbox">
+                    <label for="remember">Recordar mi sesión</label>
+                </div>
+
+                <!-- BOTÓN LOGIN -->
+                <button class="btn-submit" id="btnEntrar" type="submit">
+                    <span id="btnEntrarTexto">Entrar</span> →
+                </button>
+
+                <!-- GOOGLE -->
+                <div class="divider">o continúa con</div>
+                <button class="btn-google" type="button" onclick="alert('Inicio de sesión con Google aún no está configurado.')">
+                    🔵 Continuar con Google
+                </button>
+
+                <!-- REGISTRO -->
+                <p class="register">
+                    ¿No tienes cuenta? <a href="Crearcuenta.html">Regístrate gratis</a>
+                </p>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        const API_URL = "http://localhost:3000";
+
+        const loginForm = document.getElementById("loginForm");
+        const numcontrol = document.getElementById("number");
+        const password = document.getElementById("password");
+        const btnEntrar = document.getElementById("btnEntrar");
+        const btnEntrarTexto = document.getElementById("btnEntrarTexto");
+        const numerror = document.getElementById("numerror");
+        const passErr = document.getElementById("passErr");
+        const successMsg = document.getElementById("successMsg");
+        const serverError = document.getElementById("serverError");
+
+        // Mostrar / ocultar contraseña
+        document.getElementById("toggleBtn").addEventListener("click", () => {
+            password.type = password.type === "password" ? "text" : "password";
+        });
+
+        // Evento Submit
+        loginForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            numerror.style.display = "none";
+            passErr.style.display = "none";
+            successMsg.style.display = "none";
+            serverError.style.display = "none";
+
+            const usuario = numcontrol.value.trim();
+            const clave = password.value;
+
+            if (usuario.length < 1) {
+                numerror.style.display = "block";
+                return;
+            }
+
+            if (clave.length < 6) {
+                passErr.style.display = "block";
+                return;
+            }
+
+            btnEntrar.disabled = true;
+            btnEntrarTexto.textContent = "Verificando...";
+
+            try {
+                console.log("🔐 Intentando iniciar sesión...");
+                console.log("👤 Usuario:", usuario);
+
+                const respuesta = await fetch(`${API_URL}/auth/login`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
+                    },
+                    body: JSON.stringify({
+                        numcontrol: usuario,
+                        password: clave
+                    })
+                });
+
+                console.log("📡 Estado:", respuesta.status);
+                const datos = await respuesta.json();
+                console.log("📦 Respuesta:", datos);
+
+                if (!respuesta.ok) {
+                    serverError.textContent = "⚠ " + (datos.error || "No se pudo iniciar sesión.");
+                    serverError.style.display = "block";
+                    return;
+                }
+
+                console.log("✅ Login exitoso", datos.usuario);
+
+                const usuarioActivo = JSON.stringify(datos.usuario);
+                const recordar = document.getElementById("remember").checked;
+
+                if (recordar) {
+                    localStorage.setItem("usuarioActivo", usuarioActivo);
+                } else {
+                    sessionStorage.setItem("usuarioActivo", usuarioActivo);
+                }
+
+                successMsg.textContent = "✅ ¡Sesión iniciada correctamente!";
+                successMsg.style.display = "block";
+
+                setTimeout(() => {
+                    window.location.href = "Dashbord.html";
+                }, 700);
+
+            } catch (error) {
+                console.error("❌ Error:", error);
+                serverError.textContent = "⚠ No se pudo conectar con el servidor. Verifica que Node.js esté ejecutándose en http://localhost:3000";
+                serverError.style.display = "block";
+            } finally {
+                btnEntrar.disabled = false;
+                btnEntrarTexto.textContent = "Entrar";
+            }
+        });
+    </script>
+</body>
+</html>

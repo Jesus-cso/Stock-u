@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html class="light" lang="es">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>StockFlow - Gestión de Inventario</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed": "#ffdbcb",
+                    "secondary": "#515f74",
+                    "primary-fixed-dim": "#adc7ff",
+                    "on-tertiary-fixed": "#341100",
+                    "primary": "#005bbf",
+                    "on-primary": "#ffffff",
+                    "surface-dim": "#d8dadc",
+                    "surface-container": "#eceef0",
+                    "tertiary-container": "#c55500",
+                    "secondary-fixed-dim": "#b9c7df",
+                    "surface": "#f7f9fb",
+                    "on-tertiary-container": "#0e0200",
+                    "tertiary-fixed-dim": "#ffb691",
+                    "outline": "#727785",
+                    "on-primary-fixed": "#001a41",
+                    "tertiary": "#9e4300",
+                    "on-surface-variant": "#414754",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary-fixed": "#0d1c2e",
+                    "on-secondary-container": "#57657a",
+                    "error-container": "#ffdad6",
+                    "on-primary-fixed-variant": "#004493",
+                    "inverse-surface": "#2d3133",
+                    "surface-container-low": "#f2f4f6",
+                    "secondary-container": "#d5e3fc",
+                    "surface-container-highest": "#e0e3e5",
+                    "surface-container-high": "#e6e8ea",
+                    "background": "#f7f9fb",
+                    "on-secondary": "#ffffff",
+                    "outline-variant": "#c1c6d6",
+                    "on-tertiary-fixed-variant": "#783100",
+                    "on-error-container": "#93000a",
+                    "on-error": "#ffffff",
+                    "primary-container": "#1a73e8",
+                    "error": "#ba1a1a",
+                    "surface-bright": "#f7f9fb",
+                    "primary-fixed": "#d8e2ff",
+                    "on-primary-container": "#ffffff",
+                    "on-surface": "#191c1e",
+                    "secondary-fixed": "#d5e3fc",
+                    "surface-tint": "#005bc0",
+                    "on-background": "#191c1e",
+                    "on-secondary-fixed-variant": "#3a485b",
+                    "surface-variant": "#e0e3e5",
+                    "inverse-on-surface": "#eff1f3",
+                    "inverse-primary": "#adc7ff",
+                    "on-tertiary": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "lg": "24px",
+                    "base": "4px",
+                    "xl": "32px",
+                    "xs": "4px",
+                    "md": "16px",
+                    "container-max": "1440px",
+                    "sm": "8px",
+                    "gutter": "20px"
+            },
+            "fontFamily": {
+                    "body-md": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "table-header": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-lg": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .status-pill {
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .animate-decrease {
+            animation: textPulse 0.5s ease-out;
+        }
+        @keyframes textPulse {
+            0% { transform: scale(1); color: #ba1a1a; }
+            50% { transform: scale(1.2); color: #ba1a1a; }
+            100% { transform: scale(1); }
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="bg-background font-body-md text-on-background">
+
+   
+        <div class="sidebar-logout">
+            <a asp-action="Logout" asp-controller="Account" href="Dashbord.html" title="Cerrar sesión">
+                ⬅
+            </a>
+        </div>
+<aside class="w-[260px] h-screen fixed left-0 top-0 bg-surface-container-lowest border-r border-outline-variant flex flex-col py-lg px-md z-50">
+    <div class="flex items-center gap-sm mb-xl">
+        <span class="material-symbols-outlined text-primary text-headline-sm" data-icon="inventory_2">inventory_2</span>
+        <span class="text-headline-sm font-headline-sm text-primary font-bold">StockFlow</span>
+    </div>
+    <nav class="flex-1 space-y-xs">
+        <div class="bg-secondary-container text-on-secondary-container font-bold flex items-center gap-md p-md rounded-lg cursor-pointer transition-colors">
+            <span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+            <span>Inventario</span>
+        </div>
+        <div class="text-secondary hover:bg-surface-container transition-colors flex items-center gap-md p-md rounded-lg cursor-pointer">
+            <span class="material-symbols-outlined" data-icon="add_box">add_box</span>
+            <span>Registrar Producto</span>
+        </div>
+        <div class="text-secondary hover:bg-surface-container transition-colors flex items-center gap-md p-md rounded-lg cursor-pointer">
+            <span class="material-symbols-outlined" data-icon="handshake">handshake</span>
+            <span>Préstamos</span>
+        </div>
+        <div class="text-secondary hover:bg-surface-container transition-colors flex items-center gap-md p-md rounded-lg cursor-pointer">
+            <span class="material-symbols-outlined" data-icon="settings">settings</span>
+            <span>Configuración</span>
+        </div>
+    </nav>
+    <div class="mt-auto pt-lg border-t border-outline-variant">
+        <button class="w-full bg-primary text-on-primary font-bold py-md px-lg rounded-xl flex items-center justify-center gap-sm hover:opacity-90 active:opacity-80 transition-opacity">
+            <span class="material-symbols-outlined" data-icon="add">add</span>
+            Prestar Material
+        </button>
+    </div>
+</aside>
+
+<header class="flex justify-between items-center h-16 px-xl ml-[260px] bg-surface border-b border-outline-variant sticky top-0 z-40">
+    <div class="flex items-center flex-1 max-w-xl">
+        <div class="relative w-full">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" data-icon="search">search</span>
+            <input class="w-full pl-10 pr-4 py-2 bg-surface-container-low border border-outline-variant rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-body-md" placeholder="Buscar productos, SKUs o categorías..." type="text"/>
+        </div>
+    </div>
+    <div class="flex items-center gap-lg">
+        <div class="flex items-center gap-md border-r border-outline-variant pr-lg">
+            <button class="text-on-surface-variant hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary p-2 rounded-full relative">
+                <span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+                <span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+            </button>
+            <button class="text-on-surface-variant hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary p-2 rounded-full">
+                <span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+            </button>
+        </div>
+        <button class="bg-primary text-on-primary font-bold py-2 px-lg rounded-lg hover:opacity-90 transition-opacity">
+         <a href="nota.html" class="logo"></a>
+            Prestar Material
+            
+        </button>
+    </div>
+</header>
+
+<main class="ml-[260px] p-xl">
+    <div class="mb-xl flex flex-col md:flex-row md:items-center justify-between gap-md">
+        <div>
+            <h1 class="font-headline-lg text-headline-lg text-on-surface">Inventario de Materiales</h1>
+            <p class="text-on-surface-variant font-body-md mt-1">Supervise y gestione el flujo de existencias en tiempo real.</p>
+        </div>
+        <div class="flex gap-md">
+            <button class="flex items-center gap-sm px-lg py-2 border border-outline-variant rounded-lg bg-surface-container-lowest text-secondary font-bold hover:bg-surface-container transition-colors">
+                <span class="material-symbols-outlined" data-icon="download">download</span>
+                Exportar Reporte
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-12 gap-lg mb-xl">
+        <div class="col-span-12 lg:col-span-3 p-lg bg-surface-container-lowest border border-outline-variant rounded-xl">
+            <div class="flex items-center gap-md mb-sm">
+                <div class="p-2 bg-primary-fixed rounded-lg text-primary">
+                    <span class="material-symbols-outlined" data-icon="category">category</span>
+                </div>
+                <span class="text-label-md text-on-surface-variant">Productos Totales</span>
+            </div>
+            <div class="text-headline-md font-bold text-on-surface">1,284</div>
+            <div class="text-xs text-primary font-bold mt-2">↑ 4.2% este mes</div>
+        </div>
+        <div class="col-span-12 lg:col-span-3 p-lg bg-surface-container-lowest border border-outline-variant rounded-xl">
+            <div class="flex items-center gap-md mb-sm">
+                <div class="p-2 bg-tertiary-fixed rounded-lg text-tertiary">
+                    <span class="material-symbols-outlined" data-icon="warning">warning</span>
+                </div>
+                <span class="text-label-md text-on-surface-variant">Existencias Bajas</span>
+            </div>
+            <div class="text-headline-md font-bold text-on-surface" id="low-stock-stat">1</div>
+            <div class="text-xs text-tertiary font-bold mt-2">Requiere atención</div>
+        </div>
+        
+        <div class="col-span-12 lg:col-span-6 p-lg bg-surface-container-lowest border border-outline-variant rounded-xl">
+            <div class="flex items-center justify-between mb-md">
+                <div class="flex items-center gap-md">
+                    <div class="p-2 bg-secondary-fixed rounded-lg text-secondary">
+                        <span class="material-symbols-outlined" data-icon="assignment_turned_in">assignment_turned_in</span>
+                    </div>
+                    <span class="text-label-md font-bold text-on-surface">Tareas y Préstamos Activos</span>
+                </div>
+                <span class="text-xs bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded font-bold">Hoy</span>
+            </div>
+            <div class="space-y-sm max-h-[100px] overflow-y-auto custom-scrollbar">
+                <div class="flex items-center justify-between p-sm bg-surface rounded border border-outline-variant">
+                    <div class="flex items-center gap-sm">
+                        <span class="material-symbols-outlined text-xs text-amber-500">pending</span>
+                        <span class="text-xs text-on-surface font-semibold">Devolución de MacBook Pro 14"</span>
+                    </div>
+                    <span class="text-xs text-on-surface-variant">Por: Planificación</span>
+                </div>
+                <div class="flex items-center justify-between p-sm bg-surface rounded border border-outline-variant">
+                    <div class="flex items-center gap-sm">
+                        <span class="material-symbols-outlined text-xs text-green-500">check_circle</span>
+                        <span class="text-xs text-on-surface font-semibold">Entrega de Kit Sony A7 IV</span>
+                    </div>
+                    <span class="text-xs text-on-surface-variant">Completado</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mb-md flex flex-wrap gap-sm items-center">
+        <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider mr-2">Filtrar por Estado:</span>
+        <button onclick="filterStatus('todos')" id="btn-filter-todos" class="px-md py-1.5 rounded-lg text-xs font-bold transition-all bg-primary text-on-primary shadow-sm">
+            Todos
+        </button>
+        <button onclick="filterStatus('En Stock')" id="btn-filter-en-stock" class="px-md py-1.5 rounded-lg text-xs font-bold transition-all bg-surface border border-outline-variant text-secondary hover:bg-surface-container">
+            En Stock
+        </button>
+        <button onclick="filterStatus('Stock Bajo')" id="btn-filter-stock-bajo" class="px-md py-1.5 rounded-lg text-xs font-bold transition-all bg-surface border border-outline-variant text-secondary hover:bg-surface-container">
+            Stock Bajo
+        </button>
+        <button onclick="filterStatus('Agotado')" id="btn-filter-agotado" class="px-md py-1.5 rounded-lg text-xs font-bold transition-all bg-surface border border-outline-variant text-secondary hover:bg-surface-container">
+            Agotado
+        </button>
+    </div>
+
+    <div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden">
+        <div class="overflow-x-auto custom-scrollbar">
+            <table class="w-full text-left border-collapse" id="inventory-table">
+                <thead class="bg-surface-container-low border-b border-outline-variant">
+                    <tr>
+                        <th class="px-lg py-md font-table-header text-table-header text-on-surface-variant uppercase tracking-wider">Producto</th>
+                        <th class="px-lg py-md font-table-header text-table-header text-on-surface-variant uppercase tracking-wider">Detalles</th>
+                        <th class="px-lg py-md font-table-header text-table-header text-on-surface-variant uppercase tracking-wider text-center">Unidades</th>
+                        <th class="px-lg py-md font-table-header text-table-header text-on-surface-variant uppercase tracking-wider">Estado</th>
+                        <th class="px-lg py-md font-table-header text-table-header text-on-surface-variant uppercase tracking-wider text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-outline-variant">
+                    <tr class="hover:bg-surface-container-low transition-colors group" data-status="En Stock">
+                        <td class="px-lg py-md">
+                            <div class="flex items-center gap-md">
+                                <div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-primary">
+                                    <span class="material-symbols-outlined" data-icon="laptop_mac">laptop_mac</span>
+                                </div>
+                                <div>
+                                    <div class="font-bold text-on-surface">MacBook Pro 14" M2</div>
+                                    <div class="text-xs text-on-surface-variant">ID: LAP-001-2023</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-lg py-md max-w-xs">
+                            <p class="text-on-surface-variant truncate">32GB RAM, 1TB SSD, Gris Espacial. Equipos asignados a desarrollo.</p>
+                        </td>
+                        <td class="px-lg py-md text-center">
+                            <span class="font-bold text-headline-sm stock-count" id="stock-1">12</span>
+                        </td>
+                        <td class="px-lg py-md">
+                            <span class="status-pill bg-green-100 text-green-700 border border-green-200">En Stock</span>
+                        </td>
+                        <td class="px-lg py-md text-right">
+                            <div class="flex justify-end gap-sm">
+                                <button class="px-lg py-1.5 bg-primary text-on-primary text-xs font-bold rounded-lg hover:opacity-90 active:scale-95 transition-all" onclick="animateDecrease('stock-1')">Prestar Material</button>
+                                <button class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-surface-container-highest rounded-lg transition-colors">
+                                    <span class="material-symbols-outlined" data-icon="edit">edit</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr class="hover:bg-surface-container-low transition-colors group" data-status="Stock Bajo">
+                        <td class="px-lg py-md">
+                            <div class="flex items-center gap-md">
+                                <div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-primary">
+                                    <span class="material-symbols-outlined" data-icon="videocam">videocam</span>
+                                </div>
+                                <div>
+                                    <div class="font-bold text-on-surface">Sony A7 IV Kit</div>
+                                    <div class="text-xs text-on-surface-variant">ID: CAM-045-PRO</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-lg py-md max-w-xs">
+                            <p class="text-on-surface-variant truncate">Cámara Mirrorless 4K, Lente 28-70mm. Kit de fotografía corporativa.</p>
+                        </td>
+                        <td class="px-lg py-md text-center">
+                            <span class="font-bold text-headline-sm stock-count" id="stock-2">4</span>
+                        </td>
+                        <td class="px-lg py-md">
+                            <span class="status-pill bg-amber-100 text-amber-700 border border-amber-200">Stock Bajo</span>
+                        </td>
+                        <td class="px-lg py-md text-right">
+                            <div class="flex justify-end gap-sm">
+                                <button class="px-lg py-1.5 bg-primary text-on-primary text-xs font-bold rounded-lg hover:opacity-90 active:scale-95 transition-all" onclick="animateDecrease('stock-2')">Prestar Material</button>
+                                <button class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-surface-container-highest rounded-lg transition-colors">
+                                    <span class="material-symbols-outlined" data-icon="edit">edit</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr class="hover:bg-surface-container-low transition-colors group" data-status="Agotado">
+                        <td class="px-lg py-md">
+                            <div class="flex items-center gap-md">
+                                <div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-primary">
+                                    <span class="material-symbols-outlined" data-icon="router">router</span>
+                                </div>
+                                <div>
+                                    <div class="font-bold text-on-surface">Router Industrial C-900</div>
+                                    <div class="text-xs text-on-surface-variant">ID: NET-990-RTR</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-lg py-md max-w-xs">
+                            <p class="text-on-surface-variant truncate">Router para despliegue de red en obra. Alta disponibilidad 5G.</p>
+                        </td>
+                        <td class="px-lg py-md text-center">
+                            <span class="font-bold text-headline-sm stock-count" id="stock-3">0</span>
+                        </td>
+                        <td class="px-lg py-md">
+                            <span class="status-pill bg-red-100 text-red-700 border border-red-200">Agotado</span>
+                        </td>
+                        <td class="px-lg py-md text-right">
+                            <div class="flex justify-end gap-sm">
+                                <button class="px-lg py-1.5 bg-secondary-container text-secondary text-xs font-bold rounded-lg opacity-50 cursor-not-allowed" disabled="">Prestar Material</button>
+                                <button class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-surface-container-highest rounded-lg transition-colors">
+                                    <span class="material-symbols-outlined" data-icon="edit">edit</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr class="hover:bg-surface-container-low transition-colors group" data-status="En Stock">
+                        <td class="px-lg py-md">
+                            <div class="flex items-center gap-md">
+                                <div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-primary">
+                                    <span class="material-symbols-outlined" data-icon="tablet_mac">tablet_mac</span>
+                                </div>
+                                <div>
+                                    <div class="font-bold text-on-surface">iPad Pro 12.9"</div>
+                                    <div class="text-xs text-on-surface-variant">ID: TAB-012-APP</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-lg py-md max-w-xs">
+                            <p class="text-on-surface-variant truncate">Pantalla Liquid Retina XDR, Apple Pencil incluido.</p>
+                        </td>
+                        <td class="px-lg py-md text-center">
+                            <span class="font-bold text-headline-sm stock-count" id="stock-4">25</span>
+                        </td>
+                        <td class="px-lg py-md">
+                            <span class="status-pill bg-green-100 text-green-700 border border-green-200">En Stock</span>
+                        </td>
+                        <td class="px-lg py-md text-right">
+                            <div class="flex justify-end gap-sm">
+                                <button class="px-lg py-1.5 bg-primary text-on-primary text-xs font-bold rounded-lg hover:opacity-90 active:scale-95 transition-all" onclick="animateDecrease('stock-4')">Prestar Material</button>
+                                <button class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-surface-container-highest rounded-lg transition-colors">
+                                    <span class="material-symbols-outlined" data-icon="edit">edit</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="p-md bg-surface-container-low flex items-center justify-between">
+            <span class="text-xs text-on-surface-variant">Mostrando 1-4 de 1,284 productos</span>
+            <div class="flex items-center gap-sm">
+                <button class="p-1 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors disabled:opacity-30" disabled="">
+                    <span class="material-symbols-outlined" data-icon="chevron_left">chevron_left</span>
+                </button>
+                <div class="flex items-center gap-1">
+                    <button class="px-2 py-1 text-xs font-bold bg-primary text-on-primary rounded">1</button>
+                    <button class="px-2 py-1 text-xs font-bold text-on-surface-variant hover:bg-surface-container rounded">2</button>
+                    <button class="px-2 py-1 text-xs font-bold text-on-surface-variant hover:bg-surface-container rounded">3</button>
+                </div>
+                <button class="p-1 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors">
+                    <span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</main>
+
+<div class="fixed bottom-lg right-lg transform translate-y-20 opacity-0 bg-inverse-surface text-inverse-on-surface px-lg py-md rounded-xl shadow-lg flex items-center gap-md transition-all duration-300 z-[100]" id="notif-toast">
+    <span class="material-symbols-outlined text-green-400" data-icon="check_circle">check_circle</span>
+    <span class="text-body-md font-bold">Solicitud de préstamo procesada</span>
+</div>
+
+<script>
+    let currentFilter = 'todos';
+
+    // Maneja la disminución del stock al prestar un material
+    function animateDecrease(elementId) {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+
+        let currentVal = parseInt(el.innerText);
+        
+        if (currentVal > 0) {
+            el.classList.add('animate-decrease');
+            
+            setTimeout(() => {
+                currentVal--;
+                el.innerText = currentVal;
+                
+                const row = el.closest('tr');
+                const statusPill = row.querySelector('.status-pill');
+                const actionButton = row.querySelector('button[onclick]');
+                const productName = row.querySelector('.font-bold.text-on-surface').innerText;
+
+                // Actualizar según el número de unidades restantes
+                if (currentVal === 0) {
+                    statusPill.className = "status-pill bg-red-100 text-red-700 border border-red-200";
+                    statusPill.innerText = "Agotado";
+                    row.setAttribute('data-status', 'Agotado');
+                    
+                    actionButton.disabled = true;
+                    actionButton.className = "px-lg py-1.5 bg-secondary-container text-secondary text-xs font-bold rounded-lg opacity-50 cursor-not-allowed";
+                } else if (currentVal <= 5) {
+                    statusPill.className = "status-pill bg-amber-100 text-amber-700 border border-amber-200";
+                    statusPill.innerText = "Stock Bajo";
+                    row.setAttribute('data-status', 'Stock Bajo');
+                }
+
+                // Evaluar visibilidad según filtro activo actual
+                if (currentFilter !== 'todos' && row.getAttribute('data-status') !== currentFilter) {
+                    row.style.display = 'none';
+                }
+
+                recalculateLowStockStat();
+                showToast(`Préstamo procesado: ${productName}`);
+            }, 100);
+
+            setTimeout(() => {
+                el.classList.remove('animate-decrease');
+            }, 500);
+        }
+    }
+
+    // Control dinámico de los botones de filtro rápido
+    function filterStatus(status) {
+        currentFilter = status;
+        const rows = document.querySelectorAll('#inventory-table tbody tr');
+        const buttons = {
+            'todos': document.getElementById('btn-filter-todos'),
+            'En Stock': document.getElementById('btn-filter-en-stock'),
+            'Stock Bajo': document.getElementById('btn-filter-stock-bajo'),
+            'Agotado': document.getElementById('btn-filter-agotado')
+        };
+
+        // Resetear estilos de todos los botones de filtro
+        Object.values(buttons).forEach(btn => {
+            if(btn) {
+                btn.className = "px-md py-1.5 rounded-lg text-xs font-bold transition-all bg-surface border border-outline-variant text-secondary hover:bg-surface-container";
+            }
+        });
+
+        // Aplicar estilo activo al botón seleccionado
+        if(buttons[status]) {
+            buttons[status].className = "px-md py-1.5 rounded-lg text-xs font-bold transition-all bg-primary text-on-primary shadow-sm";
+        }
+
+        // Filtrar filas
+        rows.forEach(row => {
+            const rowStatus = row.getAttribute('data-status');
+            if (status === 'todos' || rowStatus === status) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    // Recalcula el widget de Existencias Bajas dinámicamente
+    function recalculateLowStockStat() {
+        const lowStockRows = document.querySelectorAll('#inventory-table tbody tr[data-status="Stock Bajo"]').length;
+        const statEl = document.getElementById('low-stock-stat');
+        if(statEl) statEl.innerText = lowStockRows;
+    }
+
+    // Controlar y mostrar el Toast de confirmación
+    function showToast(message) {
+        const toast = document.getElementById('notif-toast');
+        const toastText = toast.querySelector('.text-body-md');
+        
+        if(toastText) toastText.innerText = message;
+
+        toast.classList.remove('translate-y-20', 'opacity-0');
+        
+        if (window.toastTimeout) clearTimeout(window.toastTimeout);
+        window.toastTimeout = setTimeout(() => {
+            toast.classList.add('translate-y-20', 'opacity-0');
+        }, 3000);
+    }
+
+    // Buscador en tiempo real compatible con filtros
+    document.addEventListener('DOMContentLoaded', () => {
+        recalculateLowStockStat();
+        const searchInput = document.querySelector('input[placeholder*="Buscar productos"]');
+        const tableRows = document.querySelectorAll('tbody tr');
+
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase().trim();
+
+                tableRows.forEach(row => {
+                    const productName = row.querySelector('.font-bold.text-on-surface')?.innerText.toLowerCase() || '';
+                    const productId = row.querySelector('.text-xs.text-on-surface-variant')?.innerText.toLowerCase() || '';
+                    const productDetails = row.querySelector('td:nth-child(2) p')?.innerText.toLowerCase() || '';
+                    const rowStatus = row.getAttribute('data-status');
+
+                    const matchesSearch = productName.includes(searchTerm) || productId.includes(searchTerm) || productDetails.includes(searchTerm);
+                    const matchesFilter = currentFilter === 'todos' || rowStatus === currentFilter;
+
+                    if (matchesSearch && matchesFilter) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        }
+    });
+</script>
+</body>
+</html>

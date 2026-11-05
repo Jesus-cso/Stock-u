@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Entradas y Salidas - Almacén</title>
+    <!-- Tailwind CSS desde CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+
+        <!-- Encabezado y Filtros -->
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-slate-100 pb-6 mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Historial de Movimientos de Producto</h1>
+                <p class="text-sm text-slate-500">Notas de Entrada y Notas de Salida registradas en el almacén</p>
+            </div>
+            <a href="Dashbord.html" title="Volver al menú">
+                ⬅
+            </a>
+            <!-- Selectores de Filtro -->
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- Filtro Tipo de Nota -->
+                <div>
+                    <select id="filter-type" class="w-40 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-xs focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-hidden">
+                        <option value="todos">Todos los tipos</option>
+                        <option value="Entrada">Entradas</option>
+                        <option value="Salida">Salidas</option>
+                    </select>
+                </div>
+                <!-- Filtro Año (años con notas + el año actual) -->
+                <div>
+                    <select id="filter-year" class="w-36 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-xs focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-hidden">
+                        <option value="todos">Todos los años</option>
+                    </select>
+                </div>
+                <!-- Filtro Mes (siempre los 12 meses) -->
+                <div>
+                    <select id="filter-month" class="w-48 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-xs focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-hidden">
+                        <option value="todos">Todos los meses</option>
+                    </select>
+                </div>
+                <!-- Buscador -->
+                <div>
+                    <input id="filter-search" type="text" placeholder="Buscar folio, persona o área…"
+                           class="w-56 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-xs focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-hidden">
+                </div>
+                <button id="btn-recargar" type="button"
+                        class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
+                    ↻ Actualizar
+                </button>
+            </div>
+        </div>
+
+        <!-- Avisos (por ejemplo, si no se pudo cargar una de las dos listas) -->
+        <div id="aviso" class="hidden mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"></div>
+
+        <!-- De dónde salieron los datos (ayuda a detectar rutas incorrectas) -->
+        <p id="fuentes" class="mb-4 text-xs text-slate-400"></p>
+
+        <!-- Tarjetas de Indicadores Clave (KPIs) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div class="bg-slate-50 border border-slate-100 p-4 rounded-xl">
+                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Movimientos</span>
+                <h3 id="stat-total" class="text-2xl font-bold text-slate-800 mt-1">0</h3>
+            </div>
+            <div class="bg-slate-50 border border-slate-100 p-4 rounded-xl">
+                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Notas de Entrada</span>
+                <h3 id="stat-entradas" class="text-2xl font-bold text-indigo-600 mt-1">0</h3>
+                <p class="text-xs text-slate-400 mt-0.5">Mercancía recibida</p>
+            </div>
+            <div class="bg-slate-50 border border-slate-100 p-4 rounded-xl">
+                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Notas de Salida</span>
+                <h3 id="stat-salidas" class="text-2xl font-bold text-amber-600 mt-1">0</h3>
+                <p class="text-xs text-slate-400 mt-0.5">Material entregado</p>
+            </div>
+            <div class="bg-slate-50 border border-slate-100 p-4 rounded-xl">
+                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Importe de Entradas</span>
+                <h3 id="stat-importe" class="text-2xl font-bold text-emerald-600 mt-1">$0.00</h3>
+                <p class="text-xs text-slate-400 mt-0.5">Suma de las notas de entrada</p>
+            </div>
+        </div>
+
+        <!-- Tabla de Control de Notas -->
+        <div id="tabla-wrap" class="overflow-x-auto rounded-xl border border-slate-100">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-50 border-b border-slate-100 text-xs font-bold uppercase tracking-wider text-slate-500">
+                        <th class="p-4">Folio / Nota</th>
+                        <th class="p-4">Tipo</th>
+                        <th class="p-4">Fecha / Mes</th>
+                        <th class="p-4">Proveedor / Solicitante</th>
+                        <th class="p-4 text-right">Total</th>
+                        <th class="p-4 text-center">Detalle</th>
+                    </tr>
+                </thead>
+                <tbody id="inventory-table-body" class="divide-y divide-slate-100 text-sm">
+                    <tr><td colspan="6" class="p-8 text-center text-slate-400">Cargando notas…</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mensaje sin datos -->
+        <div id="no-data-message" class="hidden text-center py-12 text-slate-400">
+            <p class="font-medium">No se encontraron registros que coincidan con los filtros seleccionados.</p>
+        </div>
+
+    </div>
+
+    <!-- Lógica JavaScript -->
+    <script>
+
+        const API_BASE = "http://localhost:3000";
+
+        // Notas de entrada: la misma ruta que usa la pantalla de Notas de Entrada.
+        const RUTAS_ENTRADA = ["/notasEntrada"];
+
+        // Notas de salida: se prueban en orden y se usa la primera que responda una lista.
+        const RUTAS_SALIDA = ["/notas/salida", "/notasSalida", "/salidas", "/notas"];
+
+
+        // Componentes del DOM
+        const typeSelect = document.getElementById('filter-type');
+        const monthSelect = document.getElementById('filter-month');
+        const yearSelect = document.getElementById('filter-year');
+        const searchInput = document.getElementById('filter-search');
+        const tableBody = document.getElementById('inventory-table-body');
+        const tablaWrap = document.getElementById('tabla-wrap');
+        const noDataMessage = document.getElementById('no-data-message');
+        const aviso = document.getElementById('aviso');
+
+        // Componentes KPI
+        const statTotal = document.getElementById('stat-total');
+        const statEntradas = document.getElementById('stat-entradas');
+        const statSalidas = document.getElementById('stat-salidas');
+        const statImporte = document.getElementById('stat-importe');
+
+        let movimientos = [];   // todas las notas (entradas + salidas)
+        let visibles = [];      // las que se ven con los filtros actuales
+        let rutaSalidaUsada = null;
+
+
+        // ---------- Utilidades ----------
+
+        const esc = (t) => String(t ?? "")
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+        const dinero = (n) => Number(n || 0).toLocaleString("es-MX", {
+            minimumFractionDigits: 2, maximumFractionDigits: 2
+        });
+
+        function claveMes(fecha) {
+            return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}`;
+        }
+
+        function etiquetaMes(clave) {
+            const [y, m] = clave.split("-").map(Number);
+            const texto = new Date(y, m - 1, 1).toLocaleDateString("es-MX", { month: "long", year: "numeric" });
+            return texto.charAt(0).toUpperCase() + texto.slice(1);
+        }
+
+        function mostrarAviso(texto) {
+            if (!texto) {
+                aviso.classList.add("hidden");
+                aviso.textContent = "";
+                return;
+            }
+            aviso.textContent = texto;
+            aviso.classList.remove("hidden");
+        }
+
+
+        // ---------- Carga de datos ----------
+
+        // Prueba varias rutas y devuelve la primera que responda una lista.
+        async function pedirLista(rutas) {
+            for (const ruta of rutas) {
+                try {
+                    const r = await fetch(API_BASE + ruta, { headers: { "Accept": "application/json" } });
+                    if (!r.ok) continue;
+                    const datos = await r.json();
+                    if (Array.isArray(datos)) {
+                        return { ruta, datos };
+                    }
+                } catch (error) {
+                    // se intenta con la siguiente ruta
+                }
+            }
+            return null;
+        }
+
+        function normalizarEntrada(n) {
+            return {
+                tipo: "Entrada",
+                folio: n.folio,
+                fecha: new Date(n.fecha),
+                persona: n.proveedor || "—",
+                detallePersona: n.miembro ? `Recibió: ${n.miembro}` : "",
+                total: n.total != null ? Number(n.total) : null,
+                productos: null,
+                detalleUrl: `${API_BASE}/notasEntrada/${n.id_nota}`
+            };
+        }
+
+        function normalizarSalida(n, ruta) {
+            const lista = Array.isArray(n.productos) ? n.productos
+                : Array.isArray(n.items) ? n.items : null;
+
+            const id = n.id_nota ?? n.id ?? n.folio;
+
+            return {
+                tipo: "Salida",
+                folio: n.folio ?? id,
+                fecha: new Date(n.fecha),
+                persona: n.nombre || n.miembro || n.solicitante || "—",
+                detallePersona: n.area ? `Área: ${n.area}` : "",
+                total: n.total != null ? Number(n.total) : null,
+                productos: lista,
+                detalleUrl: `${API_BASE}${ruta}/${encodeURIComponent(id)}`
+            };
+        }
+
+        async function cargarMovimientos() {
+
+            tableBody.innerHTML =
+                '<tr><td colspan="6" class="p-8 text-center text-slate-400">Cargando notas…</td></tr>';
+            tablaWrap.classList.remove("hidden");
+            noDataMessage.classList.add("hidden");
+            mostrarAviso("");
+
+            const [entradas, salidas] = await Promise.all([
+                pedirLista(RUTAS_ENTRADA),
+                pedirLista(RUTAS_SALIDA)
+            ]);
+
+            movimientos = [];
+            const faltantes = [];
+
+            if (entradas) {
+                console.log("✅ Entradas cargadas desde:", entradas.ruta, `(${entradas.datos.length})`);
+                entradas.datos.forEach(n => movimientos.push(normalizarEntrada(n)));
+            } else {
+                faltantes.push("las notas de entrada");
+            }
+
+            if (salidas) {
+                rutaSalidaUsada = salidas.ruta;
+                console.log("✅ Salidas cargadas desde:", salidas.ruta, `(${salidas.datos.length})`);
+
+                salidas.datos
+                    .filter(n => !n.tipo || /salida/i.test(n.tipo))
+                    .forEach(n => movimientos.push(normalizarSalida(n, salidas.ruta)));
+            } else {
+                faltantes.push("las notas de salida");
+            }
+
+            if (faltantes.length > 0) {
+                mostrarAviso(
+                    "No se pudieron cargar " + faltantes.join(" ni ") +
+                    ". Verifica que Node.js esté ejecutándose en " + API_BASE +
+                    " y revisa la consola (F12) para ver qué rutas se probaron."
+                );
+                if (!salidas) {
+                    console.warn("⚠️ No respondió ninguna ruta de salidas. Rutas probadas:", RUTAS_SALIDA);
+                }
+            }
+
+            // Resumen visible de lo que respondió el servidor
+            const salidasValidas = movimientos.filter(m => m.tipo === "Salida").length;
+
+            document.getElementById("fuentes").textContent =
+                "Servidor → Entradas: " +
+                (entradas ? `${entradas.datos.length} (${entradas.ruta})` : "sin respuesta") +
+                "  ·  Salidas: " +
+                (salidas ? `${salidas.datos.length} recibidas, ${salidasValidas} válidas (${salidas.ruta})` : "sin respuesta");
+
+            // Más recientes primero
+            movimientos.sort((a, b) => b.fecha - a.fecha);
+
+            llenarFiltrosFecha();
+            renderLogistica();
+        }
+
+
+        // Años y meses de los filtros: los 12 meses siempre están disponibles;
+        // los años salen de las notas registradas (más el año actual).
+        const NOMBRES_MES = [
+            "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+            "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+        ];
+
+        function llenarFiltrosFecha() {
+
+            const anioSeleccionado = yearSelect.value;
+            const mesSeleccionado = monthSelect.value;
+
+            // Años fijos: del 2020 al 2040
+            const ANIO_INICIO = 2020;
+            const ANIO_FIN = 2040;
+
+            const lista = [];
+
+            for (let a = ANIO_INICIO; a <= ANIO_FIN; a++) {
+                lista.push(a);
+            }
+
+            yearSelect.innerHTML = '<option value="todos">Todos los años</option>' +
+                lista.map(a => `<option value="${a}">${a}</option>`).join("");
+
+            monthSelect.innerHTML = '<option value="todos">Todos los meses</option>' +
+                NOMBRES_MES.map((nombre, i) => `<option value="${i}">${nombre}</option>`).join("");
+
+            if (lista.map(String).includes(anioSeleccionado)) {
+                yearSelect.value = anioSeleccionado;
+            }
+
+            if (mesSeleccionado !== "todos") {
+                monthSelect.value = mesSeleccionado;
+            }
+        }
+
+
+        // ---------- Tabla y filtros ----------
+
+        function renderLogistica() {
+
+            const tipo = typeSelect.value;
+            const mes = monthSelect.value;
+            const anio = yearSelect.value;
+            const texto = searchInput.value.trim().toLowerCase();
+
+            visibles = movimientos.filter(m => {
+                const okTipo = tipo === 'todos' || m.tipo === tipo;
+                const okAnio = anio === 'todos' || (!isNaN(m.fecha) && String(m.fecha.getFullYear()) === anio);
+                const okMes = mes === 'todos' || (!isNaN(m.fecha) && String(m.fecha.getMonth()) === mes);
+                const okTexto = texto === "" ||
+                    `${m.folio} ${m.persona} ${m.detallePersona}`.toLowerCase().includes(texto);
+                return okTipo && okAnio && okMes && okTexto;
+            });
+
+            tableBody.innerHTML = '';
+
+            // Indicadores
+            const entradas = visibles.filter(m => m.tipo === 'Entrada');
+            const salidas = visibles.filter(m => m.tipo === 'Salida');
+
+            statTotal.textContent = visibles.length;
+            statEntradas.textContent = entradas.length;
+            statSalidas.textContent = salidas.length;
+            statImporte.textContent = "$" + dinero(entradas.reduce((s, m) => s + (m.total || 0), 0));
+
+            if (visibles.length === 0) {
+                tablaWrap.classList.add('hidden');
+                noDataMessage.classList.remove('hidden');
+                return;
+            }
+
+            tablaWrap.classList.remove('hidden');
+            noDataMessage.classList.add('hidden');
+
+            visibles.forEach((m, i) => {
+
+                const typeBadge = m.tipo === 'Salida'
+                    ? 'bg-amber-50 text-amber-700 border-amber-200'
+                    : 'bg-indigo-50 text-indigo-700 border-indigo-200';
+
+                const fechaTxt = isNaN(m.fecha) ? "—" : m.fecha.toLocaleDateString("es-MX");
+                const mesAnioTxt = isNaN(m.fecha) ? "" : `${NOMBRES_MES[m.fecha.getMonth()]} ${m.fecha.getFullYear()}`;
+
+                const row = document.createElement('tr');
+                row.className = "hover:bg-slate-50/70 transition-colors";
+                row.innerHTML = `
+                        <td class="p-4 font-bold text-slate-700">${esc(m.folio)}</td>
+                        <td class="p-4">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold border ${typeBadge}">
+                                ${m.tipo}
+                            </span>
+                        </td>
+                        <td class="p-4 text-slate-500">${fechaTxt}
+                            <div class="text-xs text-slate-300">${mesAnioTxt}</div>
+                        </td>
+                        <td class="p-4">
+                            <div class="font-medium text-slate-900">${esc(m.persona)}</div>
+                            <div class="text-xs text-slate-400">${esc(m.detallePersona)}</div>
+                        </td>
+                        <td class="p-4 text-right text-slate-700">${m.total != null ? "$" + dinero(m.total) : "—"}</td>
+                        <td class="p-4 text-center">
+                            <button type="button" data-i="${i}"
+                                    class="btn-detalle rounded-md border border-slate-200 px-3 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50">
+                                Ver
+                            </button>
+                        </td>
+                    `;
+                tableBody.appendChild(row);
+            });
+        }
+
+
+        // ---------- Detalle de productos de una nota ----------
+
+        function normalizarProductos(lista) {
+            return (lista || []).map(p => ({
+                nombre: p.producto || p.nombre || p.descripcion || "Producto",
+                cantidad: p.cantidad ?? "",
+                unidad: p.unidad || "",
+                precio: p.precio_unitario != null ? Number(p.precio_unitario) : null,
+                subtotal: p.total_renglon != null ? Number(p.total_renglon) : null
+            }));
+        }
+
+        async function obtenerProductos(m) {
+
+            if (Array.isArray(m.productos)) {
+                return normalizarProductos(m.productos);
+            }
+
+            try {
+                const r = await fetch(m.detalleUrl, { headers: { "Accept": "application/json" } });
+                if (!r.ok) return null;
+                const d = await r.json();
+                const lista = d.productos || d.items || d.articulos;
+                return Array.isArray(lista) ? normalizarProductos(lista) : null;
+            } catch (error) {
+                return null;
+            }
+        }
+
+        tableBody.addEventListener("click", async (e) => {
+
+            const btn = e.target.closest(".btn-detalle");
+            if (!btn) return;
+
+            const i = Number(btn.dataset.i);
+            const fila = btn.closest("tr");
+            const abierta = document.getElementById(`det-${i}`);
+
+            if (abierta) {
+                abierta.remove();
+                btn.textContent = "Ver";
+                return;
+            }
+
+            const det = document.createElement("tr");
+            det.id = `det-${i}`;
+            det.innerHTML = `<td colspan="6" class="p-4 bg-slate-50 text-sm text-slate-400">Cargando productos…</td>`;
+            fila.after(det);
+            btn.textContent = "Ocultar";
+
+            const productos = await obtenerProductos(visibles[i]);
+
+            if (!productos || productos.length === 0) {
+                det.firstElementChild.textContent = "No hay detalle de productos disponible para esta nota.";
+                return;
+            }
+
+            det.firstElementChild.className = "p-4 bg-slate-50";
+            det.firstElementChild.innerHTML = `
+                    <table class="w-full text-xs">
+                        <thead>
+                            <tr class="text-slate-400 uppercase">
+                                <th class="text-left py-1">Producto</th>
+                                <th class="text-left py-1">Cantidad</th>
+                                <th class="text-right py-1">P. Unit.</th>
+                                <th class="text-right py-1">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-slate-700">
+                            ${productos.map(p => `
+                                <tr class="border-t border-slate-200">
+                                    <td class="py-1">${esc(p.nombre)}</td>
+                                    <td class="py-1">${esc(p.cantidad)} ${esc(p.unidad)}</td>
+                                    <td class="py-1 text-right">${p.precio != null ? "$" + dinero(p.precio) : "—"}</td>
+                                    <td class="py-1 text-right">${p.subtotal != null ? "$" + dinero(p.subtotal) : "—"}</td>
+                                </tr>
+                            `).join("")}
+                        </tbody>
+                    </table>
+                `;
+        });
+
+
+        // ---------- Eventos ----------
+
+        typeSelect.addEventListener('change', renderLogistica);
+        monthSelect.addEventListener('change', renderLogistica);
+        yearSelect.addEventListener('change', renderLogistica);
+        searchInput.addEventListener('input', renderLogistica);
+        document.getElementById('btn-recargar').addEventListener('click', cargarMovimientos);
+
+        document.addEventListener('DOMContentLoaded', cargarMovimientos);
+
+    </script>
+</body>
+</html>

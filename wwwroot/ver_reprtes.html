@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de Reportes - Con Buscador UPT</title>
+  <style>
+    /* Reset básico y Layout general */
+    * {
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background-color: #f0f4f8; /* Un fondo gris azulado muy suave */
+      color: #334155;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* Encabezado */
+    header {
+      background: linear-gradient(135deg, #1e293b, #0f172a); /* Gradiente profesional y profundo */
+      color: #fff;
+      padding: 20px 40px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    header h1 {
+      margin: 0;
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.8px;
+    }
+
+    /* Contenedor de herramientas en el Header */
+    .header-tools {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    /* Buscador de matrícula integrado */
+    .search-box {
+      display: flex;
+      gap: 5px;
+    }
+
+    .search-box input {
+      padding: 6px 12px;
+      border: 1px solid #475569;
+      border-radius: 6px;
+      background-color: #1e293b;
+      color: white;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .search-box input::placeholder {
+      color: #94a3b8;
+    }
+
+    .search-box button {
+      padding: 6px 12px;
+      background-color: #800020; /* Guinda institucional */
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 13px;
+    }
+
+    .search-box button:hover {
+      background-color: #5a0016;
+    }
+
+    /* Botón de Perfil de Usuario */
+    .user-profile {
+      background-color: rgba(255, 255, 255, 0.1);
+      padding: 8px 16px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+
+    .user-profile span {
+      font-weight: 600;
+    }
+
+    /* Contenedor Principal */
+    .container {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); /* Tarjetas un poco más anchas */
+      gap: 30px; /* Más espacio entre tarjetas */
+      padding: 50px 40px;
+      max-width: 1400px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* Enlaces contenedores */
+    .card-link {
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+
+    /* Tarjetas (Cards) */
+    .card {
+      background: #ffffff;
+      border-radius: 16px; /* Bordes más redondeados */
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+      padding: 28px;
+      transition: all 0.3s ease; /* Transiciones más suaves */
+      border: 1px solid transparent; /* Para el efecto de iluminación al hacer hover */
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      height: 100%; /* Las tarjetas se ajustan a la altura disponible */
+    }
+
+    .card-link:hover .card {
+      transform: translateY(-8px);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      border-color: #cbd5e1; /* El borde se ilumina */
+    }
+
+    /* Encabezado de la Tarjeta con Icono */
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .card-header .icon {
+      font-size: 28px;
+      width: 50px;
+      height: 50px;
+      border-radius: 12px;
+      background-color: #f1f5f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* Colores para cada icono de tarjeta */
+    .card-link:nth-of-type(1) .card-header .icon { color: #3b82f6; } /* Azul */
+    .card-link:nth-of-type(2) .card-header .icon { color: #f97316; } /* Naranja */
+    .card-link:nth-of-type(3) .card-header .icon { color: #ec4899; } /* Rosa */
+
+    .card h3 {
+      margin: 0;
+      color: #1e293b;
+      font-size: 19px;
+      font-weight: 700;
+    }
+
+    /* Marcadores de posición de gráficos (Placeholders) */
+    .chart-placeholder {
+      flex: 1; /* Ocupa el espacio restante de la tarjeta */
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #f1f5f9;
+      position: relative;
+    }
+
+    /* Estilos para las representaciones de gráficos (SVG en línea) */
+    .chart-representation {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      padding: 10px;
+    }
+
+    .line-chart line {
+      stroke: #64748b;
+      stroke-width: 1;
+    }
+
+    .bar-chart rect {
+      fill: #f97316;
+      stroke: #fff;
+      stroke-width: 1;
+    }
+
+    .donut-chart circle {
+      fill: none;
+      stroke: #ec4899;
+      stroke-width: 12;
+    }
+
+    /* Pie de página */
+    footer {
+      background: #1e293b;
+      color: #94a3b8;
+      text-align: center;
+      padding: 18px;
+      font-size: 14px;
+      border-top: 1px solid #334155;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Panel de Reportes</h1>
+    
+    <div class="header-tools">
+        <div class="search-box">
+            <input type="text" id="txtMatriculaNav" placeholder="Matrícula de salida..." onkeypress="evaluarEnterNav(event)">
+            <button onclick="buscarDesdePanel()">Generar Nota</button>
+            <a href="Dashbord.html" title="Volver al menú">
+                ⬅
+            </a>
+        </div>
+
+      <div class="user-profile">
+        <span>👤</span>
+        <span>Admin Dashboard</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+         <div class="sidebar-logout">
+            <a asp-action="Logout" asp-controller="Account" href="index.html" title="Cerrar sesión">
+                ⬅
+            </a>
+   
+    
+    <a href="historial.html" class="card-link">
+      <div class="card">
+        <div class="card-header">
+          <div class="icon">📈</div>
+          <h3>Historial de notas</h3>
+        </div>
+        <div class="chart-placeholder">
+          <svg class="chart-representation line-chart" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <line x1="0" y1="90" x2="100" y2="90" stroke="#64748b" />
+            <line x1="10" y1="90" x2="10" y2="0" stroke="#64748b" />
+            <polyline fill="none" stroke="#3b82f6" stroke-width="2.5" points="10,80 20,60 30,70 40,40 50,55 60,30 70,50 80,20 90,45 100,25" />
+          </svg>
+        </div>
+      </div>
+    </a>
+    
+    <a href="salidas.html" class="card-link">
+      <div class="card">
+        <div class="card-header">
+          <div class="icon">📊</div>
+          <h3>Notas de salida</h3>
+        </div>
+        <div class="chart-placeholder">
+          <svg class="chart-representation bar-chart" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <rect x="5" y="60" width="10" height="30" />
+            <rect x="20" y="40" width="10" height="50" />
+            <rect x="35" y="75" width="10" height="15" />
+            <rect x="50" y="20" width="10" height="70" />
+            <rect x="65" y="55" width="10" height="35" />
+            <rect x="80" y="30" width="10" height="60" />
+            <rect x="95" y="80" width="10" height="10" />
+          </svg>
+        </div>
+      </div>
+    </a>
+    
+    <a href="nota.html" class="card-link">
+      <div class="card">
+        <div class="card-header">
+          <div class="icon">🍩</div>
+          <h3>Nota de entrada</h3>
+        </div>
+        <div class="chart-placeholder">
+          <svg class="chart-representation donut-chart" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <circle cx="50" cy="50" r="38" />
+            <circle fill="none" stroke="#fff" stroke-width="2" cx="50" cy="50" r="30" />
+            <circle cx="50" cy="50" r="38" stroke-dasharray="100, 100" transform="rotate(-90 50 50)" />
+            <circle fill="#ec4899" cx="50" cy="50" r="38" stroke-dasharray="25, 100" transform="rotate(-90 50 50)" />
+          </svg>
+        </div>
+      </div>
+    </a>
+
+  </div>
+
+  <footer>
+    © 2026 Reportes Dashboard
+  </footer>
+<script>
+  function buscarDesdePanel() {
+    const mat = document.getElementById("txtMatriculaNav").value.trim();
+    if(mat === "") {
+        alert("Escribe una matrícula primero");
+        return;
+    }
+
+    if(personalUPT[mat]) {
+        const datosPersona = {
+            matricula: mat,
+            nombre: personalUPT[mat].nombre,
+            area: personalUPT[mat].area
+        };
+
+        // 1. Guarda en localStorage para abrir tu otra vista
+        localStorage.setItem("matricula_activa", datosPersona.matricula);
+        localStorage.setItem("nombre_activo", datosPersona.nombre);
+        localStorage.setItem("area_activa", datosPersona.area);
+        
+        // 2. Envía los datos a tu servidor de Node.js
+        fetch('/api/enviar-nota', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(datosPersona)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.success) {
+                console.log("Notificación enviada a Mailtrap exitosamente.");
+            } else {
+                console.error("El servidor no pudo procesar el correo.");
+            }
+        })
+        .catch(err => console.error("Error de conexión con el servidor Node.js:", err));
+
+        // 3. Abre la nota de salida automática en pestaña nueva
+        window.open("nota_salida_automatica.html", "_blank");
+    } else {
+        alert("La matrícula no se encuentra registrada.");
+    }
+}
+</script>
+</body>
+</html>

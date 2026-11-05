@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Anaquel @anaquelId — Inventario</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --azul: #1565C0;
+            --azul-sidebar: #1976D2;
+            --amarillo: #FFD180;
+            --verde: #A5D6A7;
+            --gris: #D6D0CA;
+            --gris-header: #E8E4E0;
+            --gris-header2: #D4EDD4;
+            --font: 'Segoe UI', system-ui, sans-serif;
+        }
+        body { font-family: var(--font); display: flex; min-height: 100vh; background: var(--gris); }
+
+        /* ── SIDEBAR NIVELES ── */
+        .sidebar {
+            width: 200px; min-width: 200px;
+            background: var(--azul-sidebar);
+            display: flex; flex-direction: column;
+            padding: 0; position: sticky; top: 0; height: 100vh;
+        }
+        .sidebar-back {
+            padding: 16px 18px; border-bottom: 1px solid rgba(255,255,255,0.15);
+        }
+        .sidebar-back a { color: #fff; text-decoration: none; font-size: 1.4rem; }
+        .sidebar nav { display: flex; flex-direction: column; gap: 6px; padding: 14px 10px; }
+        .nivel-btn {
+            display: block; padding: 14px 16px;
+            background: var(--amarillo); color: #1A1A1A;
+            text-decoration: none; font-size: 0.92rem; font-weight: 600;
+            border-radius: 4px; transition: background 0.15s;
+        }
+        .nivel-btn.active { background: var(--verde); }
+        .nivel-btn:hover:not(.active) { background: #FFC040; }
+
+        /* ── MAIN ── */
+        .main { flex: 1; display: flex; flex-direction: column; }
+
+        .top-bar {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: 70px;
+        }
+        .top-bar .title-cell {
+            background: var(--gris-header);
+            display: flex; align-items: center;
+            padding: 18px 28px;
+            font-size: 1.15rem;
+            border-bottom: 1px solid #c5bfbb;
+            border-right: 1px solid #c5bfbb;
+        }
+        .top-bar .info-cell {
+            background: var(--gris-header2);
+            display: flex; align-items: center;
+            padding: 18px 28px;
+            font-size: 0.95rem;
+            border-bottom: 1px solid #b8d4b8;
+        }
+
+        /* ── TABLA DE PRODUCTOS ── */
+        .content { padding: 28px 32px; flex: 1; }
+        .content h3 { font-size: 1rem; font-weight: 600; margin-bottom: 16px; color: #444; }
+
+        .btn-add { display: inline-block; margin-bottom: 18px; padding: 9px 22px; background: #1565C0; color: #fff; border-radius: 4px; font-size: 0.87rem; font-weight: 600; text-decoration: none; cursor: pointer; border: none; }
+        .btn-add:hover { background: #0D47A1; }
+
+        table { width: 100%; border-collapse: collapse; background: #2a2a2a; color: #fff; border-radius: 6px; overflow: hidden; font-size: 0.88rem; }
+        th { background: #1e1e1e; padding: 11px 15px; text-align: left; font-weight: 700; }
+        td { padding: 10px 15px; border-top: 1px solid #3a3a3a; }
+        tr:hover td { background: rgba(255,255,255,0.04); }
+        .empty { color: #aaa; text-align: center; padding: 32px; }
+
+        .btn-sm { padding: 5px 12px; border-radius: 4px; font-size: 0.78rem; font-weight: 600; cursor: pointer; border: 1.5px solid; text-decoration: none; }
+        .btn-edit   { color: #1565C0; border-color: #1565C0; background: transparent; }
+        .btn-delete { color: #E53935; border-color: #E53935; background: transparent; }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR NIVELES -->
+    <aside class="sidebar">
+        <div class="sidebar-back">
+            <a asp-controller="Anaqueles" asp-action="Index">&#x2190;</a>
+        </div>
+        <a href="Dashbord.html" title="Volver al menú">
+            ⬅
+        </a>
+        <nav>
+
+        </nav>
+    </aside>
+
+    <!-- CONTENIDO -->
+    <div class="main">
+        <div class="top-bar">
+            <div class="title-cell">Anaquel Numero @anaquelId</div>
+            <div class="info-cell">Te encuentras en el Nivel @nivelActivo<br>@usuario</div>
+        </div>
+
+        <div class="content">
+            <a class="btn-add"
+               asp-controller="Anaqueles" asp-action="AgregarProducto"
+               asp-route-anaquelId="@anaquelId" asp-route-nivel="@nivelActivo">
+                
+            </a>
+ <a asp-action="Logout" asp-controller="Account" href="index.html" title="Cerrar sesión">
+                ⬅
+            </a>
+            
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Código</th>
+                            <th>Nombre</th>
+                            <th>Cantidad</th>
+                            <th>Unidad</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                         <tr>
+                                <td>@item.Id</td>
+                                <td>@item.Codigo</td>
+                                <td>@item.Nombre</td>
+                                <td>@item.Cantidad</td>
+                                <td>@item.Unidad</td>
+                                <td style="display:flex;gap:6px;">
+                                    <a class="btn-sm btn-edit"
+                                       asp-controller="Anaqueles" asp-action="EditarProducto"
+                                       asp-route-id="@item.Id">Editar</a>
+                                    <a class="btn-sm btn-delete"
+                                       asp-controller="Anaqueles" asp-action="EliminarProducto"
+                                       asp-route-id="@item.Id"
+                                       onclick="return confirm('¿Eliminar este producto?')">Eliminar</a>
+                                </td>
+                            </tr>
+                        
+                    </tbody>
+                </table>
+            
+                <table>
+                    <thead>
+                        <tr><th>#</th><th>Código</th><th>Nombre</th><th>Cantidad</th><th>Unidad</th><th>Acciones</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="6" class="empty">Sin productos en este nivel. Agrega uno con el botón de arriba.</td></tr>
+                    </tbody>
+                </table>
+            
+        </div>
+    </div>
+ <script src="js/funciones.js"> </script>
+</body>
+</html>

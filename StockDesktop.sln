@@ -1,0 +1,29 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.37328.6
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StockDesktop", "StockDesktop.csproj", "{19E84AEB-D0AA-42D2-98B2-56BDD93818E8}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "wwwroot", "wwwroot", "{8E4240C3-607E-47AA-A8E7-DEDD670891B8}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{19E84AEB-D0AA-42D2-98B2-56BDD93818E8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{19E84AEB-D0AA-42D2-98B2-56BDD93818E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{19E84AEB-D0AA-42D2-98B2-56BDD93818E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{19E84AEB-D0AA-42D2-98B2-56BDD93818E8}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {8C38A908-68DE-4299-939F-90E500230645}
+	EndGlobalSection
+EndGlobal

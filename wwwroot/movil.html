@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#0F172A">
+    <title>Scanner StockUPT</title>
+    <style>
+        :root {
+            --fondo: #0F172A;
+            --panel: #1E293B;
+            --linea: #334155;
+            --texto: #F1F5F9;
+            --suave: #94A3B8;
+            --azul: #2563EB;
+            --verde: #16A34A;
+            --rojo: #DC2626;
+            --ambar: #D97706;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+        html, body { height: 100%; }
+
+        body {
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+            background: var(--fondo);
+            color: var(--texto);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ── Barra superior ───────────────── */
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: calc(env(safe-area-inset-top) + 10px) 16px 10px;
+            background: var(--panel);
+            border-bottom: 1px solid var(--linea);
+        }
+
+        header h1 { font-size: 16px; font-weight: 700; letter-spacing: .2px; }
+
+        .conexion {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--suave);
+            min-width: 0;
+        }
+        .punto { width: 9px; height: 9px; border-radius: 50%; background: var(--suave); flex: none; }
+        .punto.ok { background: #22C55E; }
+        .punto.mal { background: #EF4444; }
+
+        .btn-icono {
+            width: 40px; height: 40px; border-radius: 50%;
+            border: 1px solid var(--linea); background: transparent; color: var(--texto);
+            font-size: 18px; flex: none; display: none;
+        }
+        .btn-icono.activo { background: #FACC15; color: #111; border-color: #FACC15; }
+
+        /* ── Visor de cámara ──────────────── */
+        main { position: relative; flex: 1; min-height: 0; background: #000; }
+
+        #lector { width: 100%; height: 100%; }
+        #lector video { width: 100% !important; height: 100% !important; object-fit: cover; }
+
+        .aviso-camara {
+            position: absolute; inset: 0; display: none;
+            flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+            padding: 28px; text-align: center; background: var(--fondo);
+        }
+        .aviso-camara.visible { display: flex; }
+        .aviso-camara h2 { font-size: 18px; }
+        .aviso-camara p { font-size: 14px; color: var(--suave); line-height: 1.5; max-width: 360px; }
+        .aviso-camara button, .aviso-camara a {
+            background: var(--azul); color: #fff; border: 0; border-radius: 10px;
+            padding: 12px 18px; font-size: 15px; font-weight: 700; text-decoration: none;
+        }
+
+        /* Mensaje de último envío, encima de la cámara */
+        #chip {
+            position: absolute; left: 16px; right: 16px; bottom: 14px;
+            padding: 13px 16px; border-radius: 12px; text-align: center;
+            font-size: 15px; font-weight: 700; background: rgba(15, 23, 42, .88);
+            opacity: 0; transform: translateY(8px); transition: opacity .2s, transform .2s;
+            pointer-events: none;
+        }
+        #chip.visible { opacity: 1; transform: translateY(0); }
+        #chip.ok { background: var(--verde); }
+        #chip.mal { background: var(--rojo); }
+
+        /* ── Panel inferior ───────────────── */
+        footer {
+            background: var(--panel);
+            border-top: 1px solid var(--linea);
+            padding: 12px 16px calc(env(safe-area-inset-bottom) + 12px);
+        }
+
+        form { display: flex; gap: 8px; }
+        input[type="text"] {
+            flex: 1; min-width: 0; padding: 12px 14px; font-size: 16px;
+            border-radius: 10px; border: 1px solid var(--linea);
+            background: var(--fondo); color: var(--texto);
+        }
+        input[type="text"]::placeholder { color: var(--suave); }
+        form button {
+            padding: 0 18px; border: 0; border-radius: 10px;
+            background: var(--azul); color: #fff; font-size: 15px; font-weight: 700;
+        }
+
+        #historial {
+            list-style: none; margin-top: 10px; max-height: 96px; overflow-y: auto;
+            font-size: 13px; color: var(--suave);
+        }
+        #historial li { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; }
+        #historial li b { color: var(--texto); font-family: ui-monospace, Consolas, monospace; font-weight: 600; }
+        #historial .ok { color: #4ADE80; }
+        #historial .mal { color: #F87171; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div>
+            <h1>Scanner StockUPT</h1>
+            <div class="conexion"><span class="punto" id="punto"></span><span id="estadoPc">Conectando con la PC…</span></div>
+        </div>
+        <button class="btn-icono" id="btnLinterna" type="button" title="Linterna" aria-label="Linterna">🔦</button>
+    </header>
+
+    <main>
+        <div id="lector"></div>
+
+        <div class="aviso-camara" id="avisoCamara">
+            <h2 id="avisoTitulo"></h2>
+            <p id="avisoTexto"></p>
+            <div id="avisoAccion"></div>
+        </div>
+
+        <div id="chip"></div>
+    </main>
+
+    <footer>
+        <form id="formManual" autocomplete="off">
+            <input type="text" id="codigoManual" inputmode="text" placeholder="¿No lee? Escribe el código" aria-label="Código manual">
+            <button type="submit">Enviar</button>
+        </form>
+        <ul id="historial"></ul>
+    </footer>
+
+    <script src="movil/html5-qrcode.min.js"></script>
+    <script>
+        (function () {
+            "use strict";
+
+            // ── Referencias ─────────────────────────
+            const $ = (id) => document.getElementById(id);
+            const punto = $("punto"), estadoPc = $("estadoPc"), chip = $("chip");
+            const historial = $("historial"), btnLinterna = $("btnLinterna");
+
+            // ── Clave opcional (ESCANER_TOKEN). Llega en el QR como #t=... ──
+            let token = "";
+            try {
+                const desdeUrl = new URLSearchParams(location.hash.slice(1)).get("t");
+                if (desdeUrl) {
+                    localStorage.setItem("clave_escaner", desdeUrl);
+                    history.replaceState(null, "", location.pathname + location.search);
+                }
+                token = localStorage.getItem("clave_escaner") || "";
+            } catch (e) { /* sin almacenamiento: se usa solo lo de la URL */ }
+
+            // ── Estado de conexión con la PC ────────
+            function marcarConexion(ok, texto) {
+                punto.className = "punto " + (ok ? "ok" : "mal");
+                estadoPc.textContent = texto;
+            }
+
+            async function revisarPc() {
+                try {
+                    const res = await fetch("/escaneos", { cache: "no-store" });
+                    if (!res.ok) throw new Error(res.status);
+                    marcarConexion(true, "Conectado a la PC");
+                } catch (e) {
+                    marcarConexion(false, "Sin conexión con la PC");
+                }
+            }
+            revisarPc();
+            setInterval(revisarPc, 8000);
+
+            // ── Mensaje flotante ────────────────────
+            let temporizadorChip = null;
+            function mostrarChip(texto, clase, ms) {
+                chip.textContent = texto;
+                chip.className = "visible " + (clase || "");
+                clearTimeout(temporizadorChip);
+                temporizadorChip = setTimeout(() => { chip.className = ""; }, ms || 2200);
+            }
+
+            // ── Historial de envíos ─────────────────
+            function agregarHistorial(codigo, ok) {
+                const li = document.createElement("li");
+                const b = document.createElement("b");
+                b.textContent = codigo;
+                const estado = document.createElement("span");
+                estado.className = ok ? "ok" : "mal";
+                estado.textContent = ok ? "✔ enviado" : "✖ falló";
+                li.append(b, estado);
+                historial.prepend(li);
+                while (historial.children.length > 8) historial.lastChild.remove();
+            }
+
+            // ── Envío a la PC (mismo endpoint que la app de Expo) ──
+            // vistos: último instante en que la cámara vio cada código. El lector repite
+            // la misma lectura varias veces por segundo; mientras el código siga frente a
+            // la cámara no se reenvía. Para contar otra pieza hay que apartarlo (casi 2 s
+            // sin verlo) y volver a mostrarlo.
+            const vistos = new Map();
+
+            async function enviar(codigoCrudo, desdeCamara) {
+                const codigo = String(codigoCrudo || "").trim();
+                if (!codigo) return false;
+
+                if (desdeCamara) {
+                    const ahora = Date.now();
+                    const antes = vistos.get(codigo) || 0;
+                    vistos.set(codigo, ahora);
+                    if (ahora - antes < 1800) return false;
+                }
+
+                if (navigator.vibrate) navigator.vibrate(60);
+                mostrarChip("Enviando " + codigo + "…", "", 4000);
+
+                try {
+                    const cabeceras = { "Content-Type": "application/json" };
+                    if (token) cabeceras["x-escaner-token"] = token;
+
+                    const controlador = new AbortController();
+                    const corte = setTimeout(() => controlador.abort(), 7000);
+                    const res = await fetch("/escaneos", {
+                        method: "POST",
+                        headers: cabeceras,
+                        body: JSON.stringify({ codigo, dispositivo: "navegador" }),
+                        signal: controlador.signal
+                    });
+                    clearTimeout(corte);
+
+                    const datos = await res.json().catch(() => ({}));
+                    if (!res.ok) {
+                        const falla = new Error(datos.error || "Error " + res.status);
+                        falla.estado = res.status;
+                        throw falla;
+                    }
+
+                    mostrarChip("✔ Enviado a la PC: " + codigo, "ok");
+                    agregarHistorial(codigo, true);
+                    marcarConexion(true, "Conectado a la PC");
+                    return true;
+                } catch (e) {
+                    const msg = e.name === "AbortError" ? "La PC no respondió" : e.message;
+                    mostrarChip("✖ " + msg, "mal", 4000);
+                    agregarHistorial(codigo, false);
+                    marcarConexion(false, e.estado === 401
+                        ? "Clave incorrecta: abre de nuevo el QR de la PC"
+                        : "Sin conexión con la PC");
+                    // No se borra de "vistos": así no reintenta en bucle mientras el código
+                    // sigue enfrente. Apártalo y vuelve a mostrarlo, o escríbelo abajo.
+                    return false;
+                }
+            }
+
+            // Escritura manual (respaldo si el código está gastado o hay poca luz)
+            $("formManual").addEventListener("submit", async (ev) => {
+                ev.preventDefault();
+                const campo = $("codigoManual");
+                const ok = await enviar(campo.value);
+                if (ok) campo.value = "";
+            });
+
+            // ── Avisos sobre el visor ───────────────
+            function avisoCamara(titulo, texto, accion) {
+                $("avisoTitulo").textContent = titulo;
+                $("avisoTexto").textContent = texto;
+                const zona = $("avisoAccion");
+                zona.replaceChildren();
+                if (accion) zona.append(accion);
+                $("avisoCamara").classList.add("visible");
+            }
+
+            function botonReintentar() {
+                const b = document.createElement("button");
+                b.type = "button";
+                b.textContent = "Reintentar cámara";
+                b.addEventListener("click", () => location.reload());
+                return b;
+            }
+
+            // ── Cámara ──────────────────────────────
+            async function iniciarCamara() {
+                // La cámara solo funciona en https (o localhost)
+                if (!window.isSecureContext) {
+                    const enlace = document.createElement("a");
+                    enlace.href = "https://" + location.hostname + ":3443/movil.html";
+                    enlace.textContent = "Abrir versión segura";
+                    avisoCamara(
+                        "Falta la conexión segura",
+                        "El navegador solo permite usar la cámara en una dirección https. Abre la versión segura (la primera vez toca Avanzado → Continuar).",
+                        enlace
+                    );
+                    return;
+                }
+
+                if (typeof Html5Qrcode === "undefined") {
+                    avisoCamara("No cargó el lector", "No se pudo cargar movil/html5-qrcode.min.js desde la PC.", botonReintentar());
+                    return;
+                }
+
+                const F = Html5QrcodeSupportedFormats;
+                const lector = new Html5Qrcode("lector", {
+                    formatsToSupport: [
+                        F.EAN_13, F.EAN_8, F.UPC_A, F.UPC_E,
+                        F.CODE_128, F.CODE_39, F.CODE_93, F.ITF, F.QR_CODE
+                    ],
+                    useBarCodeDetectorIfSupported: true,
+                    verbose: false
+                });
+
+                try {
+                    await lector.start(
+                        { facingMode: "environment" },
+                        {
+                            fps: 12,
+                            qrbox: (ancho, alto) => ({
+                                width: Math.floor(Math.min(ancho * 0.86, 360)),
+                                height: Math.floor(Math.min(alto * 0.45, 190))
+                            })
+                        },
+                        (texto) => { enviar(texto, true); },
+                        () => { /* fotogramas sin código: se ignoran */ }
+                    );
+                } catch (e) {
+                    const nombre = (e && (e.name || e.message || String(e))) + "";
+                    if (/NotAllowed|Permission/i.test(nombre)) {
+                        avisoCamara(
+                            "Permite la cámara",
+                            "El navegador bloqueó la cámara. Toca el candado junto a la dirección, elige Permisos y activa Cámara. También puedes escribir el código abajo.",
+                            botonReintentar()
+                        );
+                    } else if (/NotFound|Requested device/i.test(nombre)) {
+                        avisoCamara("No encuentro la cámara", "Este dispositivo no tiene cámara disponible. Puedes escribir el código abajo.");
+                    } else {
+                        avisoCamara("No se pudo abrir la cámara", nombre, botonReintentar());
+                    }
+                    return;
+                }
+
+                // Linterna (solo si el celular la ofrece)
+                try {
+                    const linterna = lector.getRunningTrackCameraCapabilities().torchFeature();
+                    if (linterna.isSupported()) {
+                        btnLinterna.style.display = "inline-block";
+                        let encendida = false;
+                        btnLinterna.addEventListener("click", async () => {
+                            try {
+                                encendida = !encendida;
+                                await linterna.apply(encendida);
+                                btnLinterna.classList.toggle("activo", encendida);
+                            } catch (e) {
+                                encendida = !encendida;
+                            }
+                        });
+                    }
+                } catch (e) { /* sin linterna */ }
+            }
+
+            iniciarCamara();
+
+            // ── Mantener la pantalla encendida mientras se escanea ──
+            let bloqueoPantalla = null;
+            async function pedirBloqueo() {
+                try {
+                    if ("wakeLock" in navigator) bloqueoPantalla = await navigator.wakeLock.request("screen");
+                } catch (e) { /* no es indispensable */ }
+            }
+            pedirBloqueo();
+            document.addEventListener("visibilitychange", () => {
+                if (document.visibilityState === "visible") pedirBloqueo();
+            });
+        })();
+    </script>
+</body>
+</html>

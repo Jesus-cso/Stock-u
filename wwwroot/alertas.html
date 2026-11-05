@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Inventario - Alertas del Sistema</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --azul: #1E3A8A;
+            --azul-hover: #1D4ED8;
+            --azul-claro: #EFF6FF;
+            --blanco: #ffffff;
+            --gris: #F8FAFC;
+            --texto: #1E293B;
+            --texto-secundario: #64748B;
+            --borde: #E2E8F0;
+            /* Colores de Alertas */
+            --rojo: #EF4444;
+            --rojo-claro: #FEE2E2;
+            --naranja: #F59E0B;
+            --naranja-claro: #FEF3C7;
+            --morado: #8B5CF6;
+            --morado-claro: #EDE9FE;
+            --verde: #059669;
+            --verde-claro: #D1FAE5;
+            --teal: #0D9488;
+            --teal-claro: #CCFBF1;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--gris);
+            color: var(--texto);
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* =======================
+           SIDEBAR
+        ======================= */
+        .sidebar {
+            width: 260px;
+            background: var(--blanco);
+            min-height: 100vh;
+            padding: 30px 20px;
+            border-right: 1px solid var(--borde);
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .sidebar-logout a {
+            color: var(--texto);
+            text-decoration: none;
+            font-size: 24px;
+            transition: color .3s;
+        }
+
+        .sidebar nav {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+            .sidebar nav a {
+                color: var(--texto-secundario);
+                text-decoration: none;
+                padding: 14px 16px;
+                font-size: 16px;
+                font-weight: 500;
+                border-radius: 8px;
+                transition: all .3s ease;
+            }
+
+                .sidebar nav a.active, .sidebar nav a:hover {
+                    background: var(--azul-claro);
+                    color: var(--azul);
+                }
+
+        /* =======================
+           CONTENIDO CENTRAL
+        ======================= */
+        .main-content {
+            flex: 1;
+            padding: 60px 40px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .page-body {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .header-seccion h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .header-seccion p {
+            color: var(--texto-secundario);
+            font-size: 15px;
+        }
+
+        /* =======================
+           TARJETAS DE RESUMEN (KPIs)
+        ======================= */
+        .resumen-cards {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 20px;
+        }
+
+        .card-kpi {
+            background: var(--blanco);
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid var(--borde);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+            .card-kpi span {
+                font-size: 14px;
+                font-weight: 600;
+                color: var(--texto-secundario);
+            }
+
+            .card-kpi h2 {
+                font-size: 32px;
+                font-weight: 700;
+            }
+
+        .kpi-stock h2 {
+            color: var(--naranja);
+        }
+
+        .kpi-prestamos h2 {
+            color: var(--rojo);
+        }
+
+        .kpi-solicitudes h2 {
+            color: var(--morado);
+        }
+
+        .kpi-salidas h2 {
+            color: var(--teal);
+        }
+
+        .kpi-entradas h2 {
+            color: var(--verde);
+        }
+
+        /* =======================
+           FILTROS / PESTAÑAS
+        ======================= */
+        .tabs-container {
+            display: flex;
+            gap: 10px;
+            border-bottom: 2px solid var(--borde);
+            padding-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 10px 20px;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--texto-secundario);
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.3s;
+        }
+
+            .tab-btn:hover {
+                color: var(--azul);
+                background: var(--azul-claro);
+            }
+
+            .tab-btn.activa {
+                color: var(--azul);
+                background: var(--azul-claro);
+            }
+
+        /* =======================
+           TABLA DE ALERTAS
+        ======================= */
+        .table-container {
+            background: var(--blanco);
+            border-radius: 16px;
+            border: 1px solid var(--borde);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 15px;
+        }
+
+        th {
+            background: #F1F5F9;
+            color: var(--texto);
+            padding: 16px 20px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--borde);
+        }
+
+        td {
+            padding: 16px 20px;
+            color: var(--texto-secundario);
+            border-bottom: 1px solid var(--borde);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr {
+            transition: background 0.2s;
+        }
+
+            tr:hover td {
+                background: #FAFAFA;
+            }
+
+        .fila-vacia td {
+            text-align: center;
+            padding: 30px 20px;
+            color: var(--texto-secundario);
+            font-style: italic;
+        }
+
+        /* Etiquetas de tipos (Badges) */
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .badge-stock {
+            color: #D97706;
+            background: var(--naranja-claro);
+        }
+
+        .badge-prestamo {
+            color: var(--rojo);
+            background: var(--rojo-claro);
+        }
+
+        .badge-solicitud {
+            color: #7C3AED;
+            background: var(--morado-claro);
+        }
+
+        .badge-salida {
+            color: var(--teal);
+            background: var(--teal-claro);
+        }
+
+        .badge-entrada {
+            color: var(--verde);
+            background: var(--verde-claro);
+        }
+
+        /* Botón de acción rápido */
+        .btn-resolver {
+            background: var(--azul-claro);
+            color: var(--azul);
+            border: none;
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+            .btn-resolver:hover {
+                background: #DBEAFE;
+            }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* RESPONSIVE */
+        @media(max-width: 1100px) {
+            .resumen-cards {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media(max-width: 900px) {
+            body {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                min-height: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--borde);
+                padding: 20px;
+            }
+
+                .sidebar nav {
+                    flex-direction: row;
+                    flex-wrap: wrap;
+                }
+
+            .main-content {
+                padding: 40px 20px;
+            }
+
+            .resumen-cards {
+                grid-template-columns: 1fr 1fr;
+                gap: 15px;
+            }
+
+            .table-container {
+                overflow-x: auto;
+            }
+
+            .tabs-container {
+                flex-wrap: wrap;
+            }
+        }
+
+        @media(max-width: 500px) {
+            .resumen-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="sidebar-logout">
+            <a href="Dashbord.html" title="Volver al menú">
+                ⬅
+            </a>
+        </div>
+        <nav>
+            <a href="alertas.html" class="active">Alertas</a>
+            <a href="areas.html">Miembros</a>
+            <a href="historial.html">Historial</a>
+            <a href="ver_reprtes.html">Ver Reportes</a>
+            <a href="control_productos.html">Control de productos</a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-body">
+
+            <div class="header-seccion">
+                <h1>Alertas del Sistema</h1>
+                <p>Monitoreo en tiempo real de inventario crítico, solicitudes y movimientos de almacén.</p>
+            </div>
+
+            <div class="resumen-cards">
+                <div class="card-kpi kpi-stock">
+                    <span>Stock Mínimo / Crítico</span>
+                    <h2 id="countStock">0</h2>
+                </div>
+                <div class="card-kpi kpi-prestamos">
+                    <span>Préstamos Vencidos</span>
+                    <h2 id="countPrestamos">0</h2>
+                </div>
+                <div class="card-kpi kpi-solicitudes">
+                    <span>Solicitudes Pendientes</span>
+                    <h2 id="countSolicitudes">0</h2>
+                </div>
+                <div class="card-kpi kpi-salidas">
+                    <span>Salidas Hoy</span>
+                    <h2 id="countSalidas">0</h2>
+                </div>
+                <div class="card-kpi kpi-entradas">
+                    <span>Entradas Hoy</span>
+                    <h2 id="countEntradas">0</h2>
+                </div>
+            </div>
+
+            <div class="tabs-container">
+                <button class="tab-btn activa" data-filtro="todas">Todas las alertas</button>
+                <button class="tab-btn" data-filtro="stock">⚠️ Stock Bajo</button>
+                <button class="tab-btn" data-filtro="solicitud">🆕 Solicitudes</button>
+                <button class="tab-btn" data-filtro="salida">📦 Salidas</button>
+                <button class="tab-btn" data-filtro="entrada">📥 Entradas</button>
+                <button class="tab-btn" data-filtro="prestamo">⏰ Préstamos Expirados</button>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tipo de Alerta</th>
+                            <th>Elemento / Descripción</th>
+                            <th>Detalle / Responsable</th>
+                            <th>Fecha Evento</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaAlertas">
+                        <!--
+                            Las filas se generan dinámicamente en JS
+                            a partir de GET /alertas.
+                        -->
+                        <tr class="fila-vacia">
+                            <td colspan="5">Cargando alertas...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+
+        // =====================================================
+        // CONFIGURACIÓN DEL BACKEND
+        // =====================================================
+
+        const API_URL = "http://localhost:3000";
+
+
+        // =====================================================
+        // MAPEO DE TIPO -> BADGE (ICONO, ETIQUETA, CLASE CSS)
+        // =====================================================
+
+        function obtenerBadge(tipo) {
+
+            switch (tipo) {
+
+                case "stock":
+                    return { clase: "badge-stock", icono: "⚠️", etiqueta: "Stock Bajo" };
+
+                case "solicitud":
+                    return { clase: "badge-solicitud", icono: "🆕", etiqueta: "Solicitud" };
+
+                case "salida":
+                    return { clase: "badge-salida", icono: "📦", etiqueta: "Salida" };
+
+                case "entrada":
+                    return { clase: "badge-entrada", icono: "📥", etiqueta: "Entrada" };
+
+                case "prestamo":
+                    return { clase: "badge-prestamo", icono: "⏰", etiqueta: "Préstamo" };
+
+                default:
+                    return { clase: "", icono: "", etiqueta: tipo };
+            }
+        }
+
+
+        // =====================================================
+        // FORMATEAR FECHA (ISO -> dd/mm/aaaa hh:mm)
+        // =====================================================
+
+        function formatearFecha(fechaISO) {
+
+            if (!fechaISO) {
+                return "—";
+            }
+
+            const f = new Date(fechaISO);
+
+            if (isNaN(f.getTime())) {
+                return "—";
+            }
+
+            const fechaTexto =
+                f.toLocaleDateString("es-MX", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric"
+                });
+
+            const horaTexto =
+                f.toLocaleTimeString("es-MX", {
+                    hour: "2-digit",
+                    minute: "2-digit"
+                });
+
+            return `${fechaTexto} ${horaTexto}`;
+        }
+
+
+        // =====================================================
+        // CARGAR ALERTAS DESDE EL BACKEND
+        // =====================================================
+
+        async function cargarAlertas() {
+
+            const tbody =
+                document.getElementById("tablaAlertas");
+
+            try {
+
+                const respuesta =
+                    await fetch(`${API_URL}/alertas`, {
+                        headers: { "Accept": "application/json" }
+                    });
+
+                const datos =
+                    await respuesta.json();
+
+                if (!respuesta.ok) {
+
+                    console.error(
+                        "❌ Error del servidor:",
+                        datos
+                    );
+
+                    tbody.innerHTML =
+                        `<tr class="fila-vacia"><td colspan="5">No se pudieron cargar las alertas.</td></tr>`;
+
+                    return;
+                }
+
+
+                // ---------------------------------------------
+                // ACTUALIZAR TARJETAS KPI
+                // ---------------------------------------------
+
+                const resumen =
+                    datos.resumen || {};
+
+                document.getElementById("countStock").textContent =
+                    resumen.stock ?? 0;
+
+                document.getElementById("countPrestamos").textContent =
+                    resumen.prestamos ?? 0;
+
+                document.getElementById("countSolicitudes").textContent =
+                    resumen.solicitudes ?? 0;
+
+                document.getElementById("countSalidas").textContent =
+                    resumen.salidas ?? 0;
+
+                document.getElementById("countEntradas").textContent =
+                    resumen.entradas ?? 0;
+
+
+                // ---------------------------------------------
+                // DIBUJAR LA TABLA
+                // ---------------------------------------------
+
+                renderizarTabla(
+                    datos.alertas || []
+                );
+
+
+                // Volver a aplicar el filtro de la pestaña activa
+                // (por si el usuario ya había elegido una antes de recargar)
+
+                const tabActiva =
+                    document.querySelector(".tab-btn.activa");
+
+                if (tabActiva) {
+
+                    aplicarFiltro(
+                        tabActiva.getAttribute("data-filtro")
+                    );
+                }
+
+
+            } catch (error) {
+
+                console.error(
+                    "❌ Error al conectar con el servidor:",
+                    error
+                );
+
+                tbody.innerHTML =
+                    `<tr class="fila-vacia"><td colspan="5">No se pudo conectar con el servidor (${API_URL}).</td></tr>`;
+            }
+
+        }
+
+
+
+        // =====================================================
+        // DIBUJAR FILAS DE LA TABLA A PARTIR DEL ARREGLO
+        // =====================================================
+
+        function renderizarTabla(alertas) {
+
+            const tbody =
+                document.getElementById("tablaAlertas");
+
+            tbody.innerHTML = "";
+
+            if (alertas.length === 0) {
+
+                tbody.innerHTML =
+                    `<tr class="fila-vacia"><td colspan="5">No hay alertas por el momento. 🎉</td></tr>`;
+
+                return;
+            }
+
+            alertas.forEach(alerta => {
+
+                const fila =
+                    document.createElement("tr");
+
+                fila.dataset.tipo =
+                    alerta.tipo;
+
+                if (alerta.id_referencia !== undefined) {
+
+                    fila.dataset.idReferencia =
+                        alerta.id_referencia;
+                }
+
+                const badge =
+                    obtenerBadge(alerta.tipo);
+
+                fila.innerHTML = `
+                        <td><span class="badge ${badge.clase}">${badge.icono} ${badge.etiqueta}</span></td>
+                        <td><strong>${alerta.titulo || "---"}</strong></td>
+                        <td>${alerta.detalle || "---"}</td>
+                        <td>${formatearFecha(alerta.fecha)}</td>
+                        <td>${botonAccionHtml(alerta)}</td>
+                    `;
+
+                tbody.appendChild(fila);
+            });
+        }
+
+
+
+        // =====================================================
+        // BOTÓN DE ACCIÓN SEGÚN EL TIPO DE ALERTA
+        // =====================================================
+        //
+        // Por ahora el backend solo tiene un endpoint real de
+        // "resolver" para las solicitudes (aprobar/rechazar).
+        // Para stock, salida y entrada todavía no hay una acción
+        // en el servidor, así que el botón únicamente la quita
+        // de esta vista (no borra nada en la base de datos).
+        // =====================================================
+
+        function botonAccionHtml(alerta) {
+
+            if (alerta.tipo === "solicitud") {
+
+                return `
+                        <button class="btn-resolver" onclick="aprobarSolicitud(${alerta.id_referencia}, this)">
+                            Aprobar
+                        </button>
+                    `;
+            }
+
+            return `
+                    <button class="btn-resolver" onclick="ocultarAlerta(this)">
+                        Marcar visto
+                    </button>
+                `;
+        }
+
+
+
+        // =====================================================
+        // APROBAR UNA SOLICITUD (acción real contra el backend)
+        // =====================================================
+
+        async function aprobarSolicitud(idSolicitud, boton) {
+
+            try {
+
+                const respuesta =
+                    await fetch(`${API_URL}/alertas/solicitudes/${idSolicitud}`, {
+
+                        method: "PUT",
+
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+
+                        body: JSON.stringify({
+                            estado: "aprobada"
+                        })
+
+                    });
+
+                const datos =
+                    await respuesta.json();
+
+                if (!respuesta.ok) {
+
+                    alert(
+                        datos.error ||
+                        "No se pudo aprobar la solicitud."
+                    );
+
+                    return;
+                }
+
+                ocultarAlerta(boton);
+
+
+            } catch (error) {
+
+                console.error(
+                    "❌ Error al aprobar solicitud:",
+                    error
+                );
+
+                alert(
+                    "No se pudo conectar con el servidor."
+                );
+            }
+
+        }
+
+
+
+        // =====================================================
+        // QUITAR UNA FILA DE LA VISTA (sin tocar el backend)
+        // =====================================================
+
+        function ocultarAlerta(boton) {
+
+            const fila =
+                boton.closest("tr");
+
+            if (!fila) {
+                return;
+            }
+
+            fila.style.opacity = "0";
+            fila.style.transform = "scale(0.98)";
+
+            setTimeout(() => {
+
+                fila.remove();
+
+                const tbody =
+                    document.getElementById("tablaAlertas");
+
+                if (tbody && tbody.children.length === 0) {
+
+                    tbody.innerHTML =
+                        `<tr class="fila-vacia"><td colspan="5">No hay alertas por el momento. 🎉</td></tr>`;
+                }
+
+            }, 300);
+        }
+
+
+
+        // =====================================================
+        // FILTRADO POR PESTAÑAS
+        // =====================================================
+
+        function aplicarFiltro(filtro) {
+
+            const filas =
+                document.querySelectorAll("#tablaAlertas tr[data-tipo]");
+
+            filas.forEach(fila => {
+
+                const tipoFila =
+                    fila.getAttribute("data-tipo");
+
+                if (filtro === "todas" || tipoFila === filtro) {
+
+                    fila.style.display = "";
+
+                } else {
+
+                    fila.style.display = "none";
+                }
+            });
+        }
+
+
+
+        // =====================================================
+        // INICIALIZAR PÁGINA
+        // =====================================================
+
+        document.addEventListener("DOMContentLoaded", () => {
+
+            cargarAlertas();
+
+            const pestañas =
+                document.querySelectorAll(".tab-btn");
+
+            pestañas.forEach(tab => {
+
+                tab.addEventListener("click", () => {
+
+                    pestañas.forEach(p =>
+                        p.classList.remove("activa")
+                    );
+
+                    tab.classList.add("activa");
+
+                    aplicarFiltro(
+                        tab.getAttribute("data-filtro")
+                    );
+                });
+            });
+
+        });
+
+    </script>
+</body>
+</html>

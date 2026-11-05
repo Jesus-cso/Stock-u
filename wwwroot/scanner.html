@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+    <title>Escáner de Código de Barras</title>
+
+    <!-- PWA: esto es lo que permite "instalar" esta página como app -->
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#1E3A8A" />
+    <link rel="apple-touch-icon" href="icons/icon-192.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Escáner" />
+
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0F172A;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            padding: 16px 20px;
+            background: #1E293B;
+            text-align: center;
+            font-weight: 700;
+            font-size: 18px;
+            border-bottom: 1px solid #334155;
+        }
+
+        #lector {
+            width: 100%;
+            max-width: 480px;
+            margin: 16px auto;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .estado {
+            text-align: center;
+            padding: 12px 20px;
+            font-size: 14px;
+            color: #94A3B8;
+        }
+
+        .panel-resultado {
+            margin: 0 16px 16px;
+            background: #1E293B;
+            border-radius: 12px;
+            padding: 20px;
+            display: none;
+        }
+
+            .panel-resultado.activo {
+                display: block;
+            }
+
+            .panel-resultado h2 {
+                font-size: 16px;
+                margin-bottom: 8px;
+                color: #10B981;
+            }
+
+            .panel-resultado.nuevo h2 {
+                color: #F59E0B;
+            }
+
+            .panel-resultado p {
+                font-size: 14px;
+                margin-bottom: 6px;
+                color: #CBD5E1;
+            }
+
+            .panel-resultado strong {
+                color: #fff;
+            }
+
+        .campo {
+            margin-top: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+            .campo label {
+                font-size: 13px;
+                color: #94A3B8;
+            }
+
+            .campo input {
+                padding: 12px 14px;
+                border-radius: 8px;
+                border: 1px solid #334155;
+                background: #0F172A;
+                color: #fff;
+                font-size: 15px;
+            }
+
+        .botones {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        button {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn-primario {
+            background: #10B981;
+            color: #fff;
+        }
+
+        .btn-secundario {
+            background: #334155;
+            color: #fff;
+        }
+
+        .codigo-detectado {
+            text-align: center;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            margin: 6px 0 4px;
+        }
+
+        .btn-instalar {
+            display: block;
+            width: calc(100% - 32px);
+            margin: 12px 16px 0;
+            padding: 12px;
+            background: #10B981;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <header>📷 Escáner de Producto</header>
+
+    <button id="btnInstalar" class="btn-instalar" style="display:none;">
+        ⬇ Instalar app en este celular
+    </button>
+
+    <div id="lector"></div>
+    <p class="estado" id="estado">Apunta la cámara al código de barras…</p>
+
+    <div class="panel-resultado" id="panelResultado">
+        <div id="contenidoResultado"></div>
+    </div>
+
+    <script>
+        const API_BASE = "http://" + window.location.hostname + ":3000";
+
+        const estadoEl = document.getElementById("estado");
+        const panel = document.getElementById("panelResultado");
+        const contenido = document.getElementById("contenidoResultado");
+
+        let escaneando = true;
+
+        const scanner = new Html5Qrcode("lector");
+
+        function iniciarEscaneo() {
+            escaneando = true;
+            estadoEl.textContent = "Apunta la cámara al código de barras…";
+            panel.classList.remove("activo", "nuevo");
+
+            scanner.start(
+                { facingMode: "environment" },
+                {
+                    fps: 10,
+                    qrbox: { width: 280, height: 140 }
+                },
+                onCodigoDetectado,
+                () => { /* se ignoran los fallos de frame individuales */ }
+            );
+        }
+
+        async function onCodigoDetectado(codigoTexto) {
+            if (!escaneando) return;
+            escaneando = false;
+
+            scanner.pause(true);
+            estadoEl.textContent = "Código detectado, buscando…";
+
+            try {
+                const res = await fetch(`${API_BASE}/productos/codigo/${encodeURIComponent(codigoTexto)}`);
+                const data = await res.json();
+
+                if (res.ok && data.encontrado) {
+                    mostrarProductoExistente(codigoTexto, data.producto);
+                } else {
+                    mostrarProductoNuevo(codigoTexto);
+                }
+            } catch (error) {
+                estadoEl.textContent = "No se pudo conectar con el servidor. Verifica que el celular y la PC estén en la misma red WiFi.";
+                scanner.resume();
+                escaneando = true;
+            }
+        }
+
+        function mostrarProductoExistente(codigo, producto) {
+            panel.classList.add("activo");
+            panel.classList.remove("nuevo");
+            estadoEl.textContent = "";
+
+            contenido.innerHTML = `
+                    <div class="codigo-detectado">${codigo}</div>
+                    <h2>✔ Producto encontrado</h2>
+                    <p><strong>${producto.nombre}</strong></p>
+                    <p>Stock actual: <strong>${producto.stock}</strong> (mínimo: ${producto.stock_minimo})</p>
+                    <p>Anaquel: ${producto.anaquel || "—"}</p>
+                    <div class="botones">
+                        <button class="btn-secundario" id="btnEscanearOtro">Escanear otro</button>
+                    </div>
+                `;
+
+            document.getElementById("btnEscanearOtro").addEventListener("click", () => {
+                scanner.resume();
+                iniciarEscaneo();
+            });
+        }
+
+        function mostrarProductoNuevo(codigo) {
+            panel.classList.add("activo", "nuevo");
+            estadoEl.textContent = "";
+
+            contenido.innerHTML = `
+                    <div class="codigo-detectado">${codigo}</div>
+                    <h2>⚠ Código nuevo, no registrado</h2>
+                    <p>No hay ningún producto con este código de barras.</p>
+                    <div class="campo">
+                        <label>Nombre del producto</label>
+                        <input type="text" id="inpNombre" placeholder="Ej. Cinta adhesiva 2 pulg.">
+                    </div>
+                    <div class="campo">
+                        <label>Stock inicial</label>
+                        <input type="number" id="inpStock" min="0" value="1">
+                    </div>
+                    <div class="botones">
+                        <button class="btn-secundario" id="btnCancelar">Cancelar</button>
+                        <button class="btn-primario" id="btnGuardar">Guardar producto</button>
+                    </div>
+                `;
+
+            document.getElementById("btnCancelar").addEventListener("click", () => {
+                scanner.resume();
+                iniciarEscaneo();
+            });
+
+            document.getElementById("btnGuardar").addEventListener("click", async () => {
+                const nombre = document.getElementById("inpNombre").value.trim();
+                const stock = parseInt(document.getElementById("inpStock").value) || 0;
+
+                if (!nombre) {
+                    alert("Escribe un nombre para el producto.");
+                    return;
+                }
+
+                try {
+                    const res = await fetch(`${API_BASE}/productos`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ nombre, stock, codigo_barras: codigo })
+                    });
+
+                    const data = await res.json();
+
+                    if (!res.ok) throw new Error(data.error || "No se pudo guardar");
+
+                    estadoEl.textContent = "✔ Producto guardado con éxito.";
+                    panel.classList.remove("activo", "nuevo");
+
+                    setTimeout(() => {
+                        scanner.resume();
+                        iniciarEscaneo();
+                    }, 1200);
+
+                } catch (error) {
+                    alert("Error: " + error.message);
+                }
+            });
+        }
+
+        iniciarEscaneo();
+
+        // ═══════════════════════════════════════
+        // PWA: registrar el service worker
+        // ═══════════════════════════════════════
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.register("service-worker.js")
+                .then(() => console.log("Service worker registrado."))
+                .catch((err) => console.error("Error registrando service worker:", err));
+        }
+
+        // Captura el evento que dispara Chrome cuando la página es instalable,
+        // y muestra nuestro propio botón (en vez del banner automático del navegador).
+        let eventoInstalacion = null;
+        const btnInstalar = document.getElementById("btnInstalar");
+
+        window.addEventListener("beforeinstallprompt", (e) => {
+            e.preventDefault();
+            eventoInstalacion = e;
+            btnInstalar.style.display = "block";
+        });
+
+        btnInstalar.addEventListener("click", async () => {
+            if (!eventoInstalacion) return;
+            eventoInstalacion.prompt();
+            await eventoInstalacion.userChoice;
+            eventoInstalacion = null;
+            btnInstalar.style.display = "none";
+        });
+
+        window.addEventListener("appinstalled", () => {
+            btnInstalar.style.display = "none";
+        });
+    </script>
+</body>
+</html>

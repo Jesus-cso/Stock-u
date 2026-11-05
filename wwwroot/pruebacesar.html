@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html class="light" lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Terminal 01 - Inventory Manager</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght=400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary": "#703800",
+                        "on-primary-container": "#c5dbff",
+                        "outline": "#727782",
+                        "tertiary-fixed-dim": "#ffb781",
+                        "on-secondary-fixed": "#191c1e",
+                        "on-tertiary-fixed": "#2f1400",
+                        "surface-variant": "#d3e4fe",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-on-surface": "#eaf1ff",
+                        "primary": "#004885",
+                        "primary-container": "#1a60a7",
+                        "secondary-fixed": "#e0e3e5",
+                        "on-secondary": "#ffffff",
+                        "surface-dim": "#cbdbf5",
+                        "secondary-container": "#e0e3e5",
+                        "on-tertiary-container": "#ffd0af",
+                        "on-tertiary-fixed-variant": "#6f3800",
+                        "inverse-primary": "#a4c8ff",
+                        "on-surface-variant": "#424751",
+                        "outline-variant": "#c2c6d2",
+                        "on-primary-fixed": "#001c3a",
+                        "primary-fixed-dim": "#a4c8ff",
+                        "surface-container": "#e5eeff",
+                        "background": "#f8f9ff",
+                        "on-tertiary": "#ffffff",
+                        "surface-bright": "#f8f9ff",
+                        "surface-tint": "#195fa6",
+                        "secondary-fixed-dim": "#c4c7c9",
+                        "surface": "#f8f9ff",
+                        "error-container": "#ffdad6",
+                        "surface-container-high": "#dce9ff",
+                        "on-error": "#ffffff",
+                        "surface-container-highest": "#d3e4fe",
+                        "inverse-surface": "#213145",
+                        "primary-fixed": "#d4e3ff",
+                        "on-error-container": "#93000a",
+                        "on-background": "#0b1c30",
+                        "surface-container-low": "#eff4ff",
+                        "on-primary": "#ffffff",
+                        "on-secondary-container": "#626567",
+                        "secondary": "#5c5f61",
+                        "error": "#ba1a1a",
+                        "on-secondary-fixed-variant": "#444749",
+                        "tertiary-fixed": "#ffdcc4",
+                        "tertiary-container": "#934c00",
+                        "on-surface": "#0b1c30",
+                        "on-primary-fixed-variant": "#004784"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "md": "16px",
+                        "container-padding": "32px",
+                        "xl": "40px",
+                        "gutter": "16px",
+                        "base": "4px",
+                        "sm": "8px",
+                        "lg": "24px",
+                        "xs": "4px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Manrope"],
+                        "body-md": ["Manrope"],
+                        "label-sm": ["Manrope"],
+                        "label-md": ["Manrope"],
+                        "headline-lg": ["Manrope"],
+                        "headline-md": ["Manrope"]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .scan-line {
+            height: 2px;
+            background: #1a60a7;
+            width: 100%;
+            position: absolute;
+            animation: scan 2s linear infinite;
+        }
+        @keyframes scan {
+            0% { top: 0; opacity: 0; }
+            50% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #004885;
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+            z-index: 999;
+            pointer-events: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .section-pane { display: none; }
+        .section-pane.active { display: block; }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex">
+
+<!-- SideNavBar (Contiene la Alerta de Vencimiento Global) -->
+<aside class="fixed left-0 top-0 h-full flex flex-col py-lg bg-surface-container-lowest border-r border-outline-variant w-64 z-50 overflow-y-auto">
+    <div class="px-md mb-md">
+        <h1 class="text-headline-lg font-headline-lg text-primary font-bold text-2xl tracking-tight">Terminal 01</h1>
+        <p class="text-label-md font-label-md text-on-surface-variant">Sesión Activa</p>
+        <a href="Dashbord.html" title="Volver al menú">
+            ⬅
+        </a>
+    </div>
+    
+    <!-- Navegación de Pestañas -->
+    <nav class="space-y-1 px-2 mb-lg" id="side-nav">
+        <button onclick="showSection('ver')" id="side-ver" class="w-full text-left text-on-surface-variant hover:bg-surface-container-high rounded-lg px-4 py-2.5 flex items-center gap-3 transition-all active:scale-95">
+            <span class="material-symbols-outlined">inventory_2</span>
+            <span class="text-label-md font-label-md font-semibold">Ver Inventario</span>
+        </button>
+        <button onclick="showSection('escanear')" id="side-escanear" class="w-full text-left bg-primary-container text-on-primary-container rounded-lg px-4 py-2.5 flex items-center gap-3 active:scale-95 transition-all font-semibold">
+            <span class="material-symbols-outlined">center_focus_strong</span>
+            <span class="text-label-md font-label-md">Escanear</span>
+        </button>
+        <button onclick="showSection('registrar')" id="side-registrar" class="w-full text-left text-on-surface-variant hover:bg-surface-container-high rounded-lg px-4 py-2.5 flex items-center gap-3 transition-all active:scale-95">
+            <span class="material-symbols-outlined">add_circle</span>
+            <span class="text-label-md font-label-md font-semibold">Registrar</span>
+        </button>
+        <button onclick="showSection('actualizar')" id="side-actualizar" class="w-full text-left text-on-surface-variant hover:bg-surface-container-high rounded-lg px-4 py-2.5 flex items-center gap-3 transition-all active:scale-95">
+            <span class="material-symbols-outlined">edit</span>
+            <span class="text-label-md font-label-md font-semibold">Actualizar</span>
+        </button>
+        <button onclick="showSection('prestar')" id="side-prestar" class="w-full text-left text-on-surface-variant hover:bg-surface-container-high rounded-lg px-4 py-2.5 flex items-center gap-3 transition-all active:scale-95">
+            <span class="material-symbols-outlined">swap_horiz</span>
+            <span class="text-label-md font-label-md font-semibold">Préstamos</span>
+        </button>
+    </nav>
+
+    <!-- PANEL DE ALERTAS DE VENCIMIENTO / STOCK (VISIBLE EN TODAS LAS PANTALLAS) -->
+    <div class="mx-md p-3 bg-surface-container border border-outline-variant/60 rounded-xl mb-md">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="font-bold text-xs text-on-surface flex items-center gap-1.5 uppercase tracking-wider">
+                <span class="material-symbols-outlined text-error text-md">alarm_on</span>
+                Alertas
+            </h3>
+            <span id="alert-counter" class="bg-error-container text-on-error-container px-1.5 py-0.5 rounded text-[10px] font-bold">0 Ítems</span>
+        </div>
+        <div class="space-y-2 max-h-[190px] overflow-y-auto pr-1" id="lista-alertas-lateral">
+            <!-- Inyectado dinámicamente según base de datos -->
+        </div>
+    </div>
+
+    <!-- Sección de Acceso Rápido Inferior -->
+    <div class="mt-auto px-md pt-2 border-t border-outline-variant/30">
+        <button onclick="showSection('registrar')" class="w-full bg-primary text-on-primary rounded-lg py-2.5 flex items-center justify-center gap-2 mb-2 hover:bg-primary-container transition-all active:scale-95 shadow-sm text-sm font-medium">
+            <span class="material-symbols-outlined text-base">add</span>
+            <span>Nuevo Producto</span>
+        </button>
+        <a class="text-on-surface-variant hover:bg-surface-container-high rounded-lg px-4 py-2 flex items-center gap-3 transition-colors text-sm" href="#">
+            <span class="material-symbols-outlined text-base">logout</span>
+            <span>Cerrar Sesión</span>
+        </a>
+    </div>
+</aside>
+
+<!-- Main Content Canvas -->
+<main class="ml-64 flex-1 flex flex-col min-h-screen">
+    <!-- TopNavBar -->
+    <header class="sticky top-0 z-40 bg-background/90 backdrop-blur border-b border-outline-variant h-20 flex items-center">
+        <div class="flex justify-between items-center w-full px-container-padding max-w-7xl mx-auto">
+            <div class="flex items-center gap-lg">
+                <span class="text-xl font-bold text-primary mr-4">Inventory Manager</span>
+                <nav class="hidden md:flex items-center gap-6" id="top-nav">
+                    <button onclick="showSection('ver')" id="top-ver" class="text-on-surface-variant hover:text-primary transition-colors font-medium">Ver productos</button>
+                    <button onclick="showSection('registrar')" id="top-registrar" class="text-on-surface-variant hover:text-primary transition-colors font-medium">Registrar</button>
+                    <button onclick="showSection('actualizar')" id="top-actualizar" class="text-on-surface-variant hover:text-primary transition-colors font-medium">Actualizar</button>
+                    <button onclick="showSection('escanear')" id="top-escanear" class="text-primary font-bold border-b-2 border-primary pb-1">Escanear</button>
+                    <button onclick="showSection('prestar')" id="top-prestar" class="text-on-surface-variant hover:text-primary transition-colors font-medium">Préstamos</button>
+                </nav>
+            </div>
+            <div class="flex items-center gap-md">
+                <button class="p-2 rounded-full hover:bg-surface-container-low transition-colors text-on-surface-variant relative">
+                    <span class="material-symbols-outlined">notifications</span>
+                    <span class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full"></span>
+                </button>
+                <div class="w-10 h-10 rounded-full overflow-hidden border border-outline-variant ml-2">
+                    <img class="w-full h-full object-cover" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=100&auto=format&fit=crop" alt="Profile">
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="p-container-padding max-w-7xl mx-auto w-full space-y-lg flex-1">
+        
+        <!-- PESTAÑA: ESCANEAR (ACTIVA POR DEFECTO) -->
+        <div id="sec-escanear" class="section-pane active space-y-6">
+            <div>
+                <h2 class="text-2xl font-bold text-on-surface mb-xs">Escanear producto</h2>
+                <p class="text-body-md text-on-surface-variant">Gestión de stock en tiempo real mediante identificación visual</p>
+            </div>
+            
+            <div class="bg-white rounded-xl border border-outline-variant p-lg shadow-sm flex flex-col min-h-[340px]">
+                <div class="flex-1 border-2 border-dashed border-outline-variant rounded-lg bg-surface-container-lowest relative overflow-hidden flex flex-col items-center justify-center p-xl group transition-all hover:border-primary/50">
+                    <div class="relative mb-lg w-24 h-24 flex items-center justify-center text-primary/20 group-hover:text-primary transition-colors">
+                        <span class="material-symbols-outlined text-[64px]">center_focus_strong</span>
+                        <div class="scan-line"></div>
+                    </div>
+                    <p class="text-body-lg text-on-surface-variant mb-lg text-center">Ingresa el código de barras manualmente o usa un lector (Ej: LUB-X1, ADH-PRO)</p>
+                    <div class="flex w-full max-w-md bg-white rounded-lg border border-outline-variant focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all overflow-hidden shadow-sm">
+                        <input class="flex-1 px-md py-3 border-none focus:ring-0 text-body-lg" id="scan-input" placeholder="Código de producto..." type="text" onkeydown="if(event.key==='Enter')escanearProducto()">
+                        <button onclick="escanearProducto()" class="bg-primary text-white px-lg py-3 flex items-center gap-2 hover:bg-primary-container transition-colors active:scale-95 font-bold">
+                            <span class="material-symbols-outlined">scan</span>
+                            <span>Escanear</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="scan-result" class="mt-4 p-4 bg-surface-container-low border border-outline-variant rounded-lg hidden">
+                    <p class="text-xs font-bold text-primary uppercase tracking-wider mb-1">Resultado del escaneo</p>
+                    <h4 id="scan-nombre" class="text-lg font-bold text-on-surface"></h4>
+                    <div class="flex gap-4 mt-2 text-sm text-on-surface-variant">
+                        <span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">tag</span> <span id="scan-cat"></span></span>
+                        <span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">package</span> Stock: <span id="scan-stock" class="font-bold"></span></span>
+                    </div>
+                    <p id="scan-desc" class="mt-2 text-sm text-on-surface-variant border-t border-outline-variant/30 pt-2"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- PESTAÑA: VER INVENTARIO -->
+        <div id="sec-ver" class="section-pane space-y-6">
+            <div>
+                <h2 class="text-2xl font-bold text-on-surface mb-xs">Inventario registrado</h2>
+                <p class="text-body-md text-on-surface-variant">Búsqueda, visualización y gestión del stock disponible</p>
+            </div>
+            <div class="bg-white rounded-xl border border-outline-variant p-md shadow-sm space-y-4">
+                <div class="flex w-full bg-surface-container-low rounded-lg border border-outline-variant overflow-hidden">
+                    <span class="material-symbols-outlined items-center p-3 text-on-surface-variant">search</span>
+                    <input type="text" id="input-busqueda" placeholder="Buscar por nombre o código de barras..." oninput="filtrarProductos(this.value)" class="w-full bg-transparent border-none focus:ring-0 text-sm py-3" />
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-outline-variant text-on-surface-variant text-sm font-semibold">
+                                <th class="p-3">Código</th>
+                                <th class="p-3">Nombre</th>
+                                <th class="p-3">Categoría</th>
+                                <th class="p-3">Stock</th>
+                                <th class="p-3">Estado</th>
+                                <th class="p-3 text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-productos" class="text-sm divide-y divide-outline-variant/50"></tbody>
+                    </table>
+                    <div class="text-center py-8 text-on-surface-variant hidden" id="empty-msg">Sin productos registrados aún o no se encontraron resultados.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PESTAÑA: REGISTRAR -->
+        <div id="sec-registrar" class="section-pane space-y-6">
+            <div>
+                <h2 class="text-2xl font-bold text-on-surface mb-xs">Registrar nuevo producto</h2>
+                <p class="text-body-md text-on-surface-variant">Añadir nuevos artículos al almacén logístico</p>
+            </div>
+            <div class="bg-white rounded-xl border border-outline-variant p-lg shadow-sm max-w-3xl">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-1 uppercase">Código *</label>
+                        <input type="text" id="reg-codigo" placeholder="Ej: PROD-001" class="w-full rounded border-outline-variant focus:border-primary focus:ring-primary text-sm" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-1 uppercase">Nombre *</label>
+                        <input type="text" id="reg-nombre" placeholder="Nombre descriptivo" class="w-full rounded border-outline-variant focus:border-primary focus:ring-primary text-sm" />
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-1 uppercase">Categoría *</label>
+                        <select id="reg-categoria" class="w-full rounded border-outline-variant focus:border-primary focus:ring-primary text-sm">
+                            <option value="">Seleccionar...</option>
+                            <option>Electrónica</option>
+                            <option>Herramientas</option>
+                            <option>Mobiliario</option>
+                            <option>Papelería</option>
+                            <option>Otro</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-1 uppercase">Stock Inicial</label>
+                        <input type="number" id="reg-stock" placeholder="0" min="0" class="w-full rounded border-outline-variant focus:border-primary focus:ring-primary text-sm" />
+                    </div>
+                </div>
+                <div class="mb-5">
+                    <label class="block text-xs font-bold text-on-surface-variant mb-1 uppercase">Descripción</label>
+                    <textarea id="reg-desc" placeholder="Detalles o especificaciones técnicas..." class="w-full rounded border-outline-variant focus:border-primary focus:ring-primary text-sm h-24"></textarea>
+                </div>
+                <button onclick="registrarProducto()" class="bg-primary text-white px-6 py-2.5 rounded hover:bg-primary-container font-semibold flex items-center gap-2 text-sm transition-all active:scale-95 shadow-sm">
+                    <span class="material-symbols-outlined text-base">save</span> Guardar Producto
+                </button>
+            </div>
+        </div>
+
+        <!-- PESTAÑA: ACTUALIZAR -->
+        <div id="sec-actualizar" class="section-pane space-y-6">
+            <div>
+                <h2 class="text-2xl font-bold text-on-surface mb-xs">Actualizar producto</h2>
+                <p class="text-body-md text-on-surface-variant">Modificar propiedades o reabastecer existencias físicas</p>
+            </div>
+            <div class="bg-white rounded-xl border border-outline-variant p-lg shadow-sm max-w-3xl space-y-6">
+                <div>
+                    <label class="block text-xs font-bold text-on-surface-variant mb-1 uppercase">Buscar por código de barras</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="upd-buscar" placeholder="Ej: LUB-X1" onkeydown="if(event.key==='Enter')buscarParaEditar()" class="flex-1 rounded border-outline-variant focus:border-primary focus:ring-primary text-sm" />
+                        <button onclick="buscarParaEditar()" class="bg-surface-container-high border border-outline-variant px-4 py-2 rounded text-sm font-semibold hover:bg-outline-variant/20 flex items-center gap-1 transition-all">
+                            <span class="material-symbols-outlined text-sm">search</span> Buscar
+                        </button>
+                    </div>
+                    <div id="edit-notfound" class="text-error text-xs font-bold mt-2 hidden">Producto no encontrado. Revisa el identificador.</div>
+                </div>
+
+                <div id="edit-form" class="border-t border-outline-variant/50 pt-4 hidden space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-on-surface-variant mb-1 uppercase">Nombre del producto</label>
+                            <input type="text" id="upd-nombre" class="w-full rounded border-outline-variant focus:border-primary focus:ring-primary text-sm" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-on-surface-variant mb-1 uppercase">Categoría</label>
+                            <select id="upd-categoria" class="w-full rounded border-outline-variant focus:border-primary focus:ring-primary text-sm">
+                                <option>Electrónica</option>
+                                <option>Herramientas</option>
+                                <option>Mobiliario</option>
+                                <option>Papelería</option>
+                                <option>Otro</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                        <div>
+                            <label class="block text-xs font-bold text-on-surface-variant mb-1 uppercase">Existencias (Stock)</label>
+                            <input type="number" id="upd-stock" min="0" class="w-full rounded border-outline-variant focus:border-primary focus:ring-primary text-sm" />
+                        </div>
+                        <div>
+                            <button onclick="guardarEdicion()" class="bg-primary text-white px-6 py-2 rounded hover:bg-primary-container font-semibold text-sm flex items-center gap-2 shadow-sm transition-all active:scale-95 w-full md:w-auto justify-center">
+                                <span class="material-symbols-outlined text-base">check</span> Guardar cambios
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-1 uppercase">Descripción</label>
+                        <textarea id="upd-desc" class="w-full rounded border-outline-variant focus:border-primary focus:ring-primary text-sm h-20"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PESTAÑA: PRÉSTAMOS -->
+        <div id="sec-prestar" class="section-pane space-y-6">
+            <div>
+                <h2 class="text-2xl font-bold text-on-surface mb-xs">Préstamos de productos</h2>
+                <p class="text-body-md text-on-surface-variant">Asignación temporal de materiales a personal responsable</p>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-lg">
+                <div class="lg:col-span-5 bg-white rounded-xl border border-outline-variant p-lg shadow-sm h-fit">
+                    <h3 class="text-md font-bold mb-4 text-primary uppercase tracking-wider">Registrar Salida</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-on-surface-variant mb-1 uppercase">Código del Producto *</label>
+                            <input type="text" id="loan-codigo" placeholder="Ej: LUB-X1" class="w-full rounded border-outline-variant focus:border-primary focus:ring-primary text-sm" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-on-surface-variant mb-1 uppercase">Responsable / Operario *</label>
+                            <input type="text" id="loan-persona" placeholder="Nombre completo" class="w-full rounded border-outline-variant focus:border-primary focus:ring-primary text-sm" />
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-bold text-on-surface-variant mb-1 uppercase">Cantidad</label>
+                                <input type="number" id="loan-cantidad" min="1" value="1" class="w-full rounded border-outline-variant focus:border-primary focus:ring-primary text-sm" />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-on-surface-variant mb-1 uppercase">Devolución</label>
+                                <input type="date" id="loan-fecha" class="w-full rounded border-outline-variant focus:border-primary focus:ring-primary text-sm" />
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-on-surface-variant mb-1 uppercase">Notas / Destino</label>
+                            <input type="text" id="loan-nota" placeholder="Motivo del préstamo..." class="w-full rounded border-outline-variant focus:border-primary focus:ring-primary text-sm" />
+                        </div>
+                        <button onclick="registrarPrestamo()" class="w-full bg-primary text-white py-2.5 rounded font-semibold text-sm hover:bg-primary-container flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm">
+                            <span class="material-symbols-outlined text-base">swap_horiz</span> Conceder Préstamo
+                        </button>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-7 bg-white rounded-xl border border-outline-variant p-lg shadow-sm">
+                    <h3 class="text-md font-bold mb-4 text-on-surface-variant uppercase tracking-wider">Flujos y Préstamos Activos</h3>
+                    <div id="lista-prestamos" class="space-y-3"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel Bento Inferior Estadístico -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-lg pt-4">
+            <div class="bg-surface-container-low rounded-xl p-lg border border-outline-variant/30 flex items-center gap-md">
+                <div class="bg-primary-fixed p-3 rounded-full text-primary flex items-center justify-center"><span class="material-symbols-outlined">inventory</span></div>
+                <div>
+                    <p class="text-xs font-bold text-on-surface-variant uppercase">Tipos de Ítem</p>
+                    <p id="bento-totales" class="text-2xl font-bold text-on-surface">0</p>
+                </div>
+            </div>
+            <div class="bg-surface-container-low rounded-xl p-lg border border-outline-variant/30 flex items-center gap-md">
+                <div class="bg-tertiary-fixed p-3 rounded-full text-tertiary flex items-center justify-center"><span class="material-symbols-outlined">outgoing_mail</span></div>
+                <div>
+                    <p class="text-xs font-bold text-on-surface-variant uppercase">Préstamos en Curso</p>
+                    <p id="bento-prestamos" class="text-2xl font-bold text-on-surface">0</p>
+                </div>
+            </div>
+            <div class="bg-surface-container-low rounded-xl p-lg border border-outline-variant/30 flex items-center gap-md">
+                <div class="bg-error-container p-3 rounded-full text-error flex items-center justify-center"><span class="material-symbols-outlined">report</span></div>
+                <div>
+                    <p class="text-xs font-bold text-on-surface-variant uppercase">Sin Existencias</p>
+                    <p id="bento-criticos" class="text-2xl font-bold text-on-surface">0</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// Base de datos reactiva en memoria
+let productos = [
+  { codigo: "LUB-X1", nombre: "Lubricante Sintético X1", categoria: "Otro", stock: 2, desc: "Lubricante de alta densidad para engranajes industriales." },
+  { codigo: "ADH-PRO", nombre: "Adhesivo Industrial Pro", categoria: "Herramientas", stock: 15, desc: "Fijación instantánea para componentes metálicos." },
+  { codigo: "HEPA-Z", nombre: "Filtro HEPA Serie Z", categoria: "Electrónica", stock: 0, desc: "Módulo purificador para cabinas estériles." }
+];
+let prestamos = [];
+let editIdx = -1;
+
+function showSection(id) {
+    document.querySelectorAll('.section-pane').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('#top-nav button').forEach(b => {
+        b.className = "text-on-surface-variant hover:text-primary transition-colors font-medium";
+    });
+    document.querySelectorAll('#side-nav button').forEach(b => {
+        b.className = "w-full text-left text-on-surface-variant hover:bg-surface-container-high rounded-lg px-4 py-2.5 flex items-center gap-3 transition-all active:scale-95";
+    });
+
+    document.getElementById('sec-' + id).classList.add('active');
+
+    const topTab = document.getElementById('top-' + id);
+    if(topTab) topTab.className = "text-primary font-bold border-b-2 border-primary pb-1";
+
+    const sideTab = document.getElementById('side-' + id);
+    if(sideTab) sideTab.className = "w-full text-left bg-primary-container text-on-primary-container rounded-lg px-4 py-2.5 flex items-center gap-3 active:scale-95 transition-all font-semibold";
+}
+
+function triggerToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function obtenerBadgeEstado(stock) {
+  if (stock <= 0) return '<span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-red-100 text-red-800">Agotado</span>';
+  if (stock <= 3) return '<span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800">Bajo Stock</span>';
+  return '<span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-green-100 text-green-800">OK</span>';
+}
+
+function syncDataViews() {
+  const tbody = document.getElementById('tbody-productos');
+  const empty = document.getElementById('empty-msg');
+  const query = document.getElementById('input-busqueda').value.toLowerCase().trim();
+  
+  tbody.innerHTML = '';
+  const filtrados = productos.filter(p => p.nombre.toLowerCase().includes(query) || p.codigo.toLowerCase().includes(query));
+  
+  if (!filtrados.length) { 
+    empty.classList.remove('hidden'); 
+  } else {
+    empty.classList.add('hidden');
+    filtrados.forEach((p) => {
+        const realIdx = productos.indexOf(p);
+        tbody.innerHTML += `
+        <tr class="hover:bg-surface-container-low transition-colors">
+          <td class="p-3 font-mono font-bold text-primary">${p.codigo}</td>
+          <td class="p-3 font-medium text-on-surface">${p.nombre}</td>
+          <td class="p-3 text-on-surface-variant">${p.categoria}</td>
+          <td class="p-3 font-semibold">${p.stock}</td>
+          <td class="p-3">${obtenerBadgeEstado(p.stock)}</td>
+          <td class="p-3 text-right space-x-1">
+            <button onclick="irAEditar('${p.codigo}')" class="p-1.5 hover:bg-surface-container-high rounded text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined text-sm">edit</span></button>
+            <button onclick="eliminarProducto(${realIdx})" class="p-1.5 hover:bg-red-50 rounded text-on-surface-variant hover:text-error transition-colors"><span class="material-symbols-outlined text-sm">delete</span></button>
+          </td>
+        </tr>`;
+    });
+  }
+
+  // Actualizar Contadores Generales
+  document.getElementById('bento-totales').textContent = productos.length;
+  document.getElementById('bento-prestamos').textContent = prestamos.length;
+  document.getElementById('bento-criticos').textContent = productos.filter(p => p.stock === 0).length;
+
+  // REFRESCAR ALERTAS EN LA BARRA LATERAL PERMANENTE (Stock Crítico u Obsoleto)
+  const lateralAlerts = document.getElementById('lista-alertas-lateral');
+  const criticos = productos.filter(p => p.stock <= 3);
+  document.getElementById('alert-counter').textContent = `${criticos.length} Ítems`;
+  
+  if(criticos.length === 0) {
+      lateralAlerts.innerHTML = '<p class="text-[11px] text-on-surface-variant text-center py-2">Sin anomalías de stock.</p>';
+  } else {
+      lateralAlerts.innerHTML = criticos.map(p => `
+        <div onclick="irAEditar('${p.codigo}')" class="p-2 rounded bg-white border border-outline-variant/40 hover:border-primary/40 transition-all flex items-center gap-2 cursor-pointer">
+            <div class="w-6 h-6 rounded flex items-center justify-center shrink-0 ${p.stock === 0 ? 'bg-red-50 text-error' : 'bg-amber-50 text-tertiary'}">
+                <span class="material-symbols-outlined text-xs font-bold">${p.stock === 0 ? 'close' : 'warning'}</span>
+            </div>
+            <div class="flex-1 min-w-0">
+                <h4 class="text-[11px] font-bold text-on-surface truncate">${p.nombre}</h4>
+                <p class="text-[10px] ${p.stock === 0 ? 'text-error font-bold' : 'text-on-surface-variant'} truncate">
+                    ${p.stock === 0 ? 'Agotado (0 uds)' : 'Existencia baja: ' + p.stock + ' uds.'}
+                </p>
+            </div>
+        </div>
+      `).join('');
+  }
+}
+
+function filtrarProductos(val) {
+    syncDataViews();
+}
+
+function registrarProducto() {
+  const codigo = document.getElementById('reg-codigo').value.trim().toUpperCase();
+  const nombre = document.getElementById('reg-nombre').value.trim();
+  const categoria = document.getElementById('reg-categoria').value;
+  const stock = parseInt(document.getElementById('reg-stock').value) || 0;
+  const desc = document.getElementById('reg-desc').value.trim();
+  
+  if (!codigo || !nombre || !categoria) { triggerToast('Por favor, completa campos obligatorios'); return; }
+  if (productos.find(p => p.codigo === codigo)) { triggerToast('El código de barras ya existe'); return; }
+  
+  productos.push({ codigo, nombre, categoria, stock, desc });
+  
+  ['reg-codigo','reg-nombre','reg-stock','reg-desc'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('reg-categoria').value = '';
+  
+  triggerToast('Producto añadido de forma exitosa');
+  syncDataViews();
+  showSection('ver');
+}
+
+function eliminarProducto(idx) {
+  if (!confirm('¿Deseas eliminar este producto del catálogo?')) return;
+  productos.splice(idx, 1);
+  syncDataViews();
+  triggerToast('Registro eliminado');
+}
+
+function irAEditar(codigo) {
+  showSection('actualizar');
+  document.getElementById('upd-buscar').value = codigo;
+  buscarParaEditar();
+}
+
+function buscarParaEditar() {
+  const q = document.getElementById('upd-buscar').value.trim().toUpperCase();
+  editIdx = productos.findIndex(p => p.codigo === q);
+  const form = document.getElementById('edit-form');
+  const notf = document.getElementById('edit-notfound');
+  
+  if (editIdx < 0) { form.classList.add('hidden'); notf.classList.remove('hidden'); return; }
+  
+  notf.classList.add('hidden');
+  form.classList.remove('hidden');
+  
+  const p = productos[editIdx];
+  document.getElementById('upd-nombre').value = p.nombre;
+  document.getElementById('upd-categoria').value = p.categoria;
+  document.getElementById('upd-stock').value = p.stock;
+  document.getElementById('upd-desc').value = p.desc || '';
+}
+
+function guardarEdicion() {
+  if (editIdx < 0) return;
+  const nombreMod = document.getElementById('upd-nombre').value.trim();
+  if(!nombreMod) { triggerToast('El nombre no puede estar vacío'); return; }
+
+  productos[editIdx].nombre = nombreMod;
+  productos[editIdx].categoria = document.getElementById('upd-categoria').value;
+  productos[editIdx].stock = parseInt(document.getElementById('upd-stock').value) || 0;
+  productos[editIdx].desc = document.getElementById('upd-desc').value.trim();
+  
+  triggerToast('Modificaciones guardadas');
+  document.getElementById('edit-form').classList.add('hidden');
+  document.getElementById('upd-buscar').value = '';
+  
+  syncDataViews();
+  showSection('ver');
+}
+
+function escanearProducto() {
+  const q = document.getElementById('scan-input').value.trim().toUpperCase();
+  const p = productos.find(pr => pr.codigo === q);
+  const resPanel = document.getElementById('scan-result');
+  
+  if (!p) { 
+    resPanel.classList.add('hidden'); 
+    triggerToast('Código no detectado'); 
+    return; 
+  }
+  
+  document.getElementById('scan-nombre').textContent = p.nombre;
+  document.getElementById('scan-cat').textContent = p.categoria;
+  document.getElementById('scan-stock').textContent = p.stock;
+  document.getElementById('scan-desc').textContent = p.desc || 'Sin observaciones.';
+  
+  resPanel.classList.remove('hidden');
+  triggerToast('Producto identificado');
+  document.getElementById('scan-input').value = '';
+}
+
+function registrarPrestamo() {
+  const codigo = document.getElementById('loan-codigo').value.trim().toUpperCase();
+  const persona = document.getElementById('loan-persona').value.trim();
+  const cantidad = parseInt(document.getElementById('loan-cantidad').value) || 1;
+  const fecha = document.getElementById('loan-fecha').value;
+  const nota = document.getElementById('loan-nota').value.trim();
+  
+  if (!codigo || !persona) { triggerToast('Ingresa código y operario'); return; }
+  
+  const idx = productos.findIndex(p => p.codigo === codigo);
+  if (idx < 0) { triggerToast('El producto no existe'); return; }
+  if (productos[idx].stock < cantidad) { triggerToast('Stock insuficiente'); return; }
+  
+  productos[idx].stock -= cantidad;
+  prestamos.push({ codigo, nombre: productos[idx].nombre, persona, cantidad, fecha, nota });
+  
+  ['loan-codigo','loan-persona','loan-nota','loan-fecha'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('loan-cantidad').value = 1;
+  
+  syncDataViews();
+  renderPrestamos();
+  triggerToast('Orden de salida procesada');
+}
+
+function devolverPrestamo(i) {
+  const loan = prestamos[i];
+  const idx = productos.findIndex(p => p.codigo === loan.codigo);
+  if (idx >= 0) productos[idx].stock += loan.cantidad;
+  
+  prestamos.splice(i, 1);
+  syncDataViews();
+  renderPrestamos();
+  triggerToast('Material reintegrado');
+}
+
+function renderPrestamos() {
+  const cont = document.getElementById('lista-prestamos');
+  if (!prestamos.length) { 
+    cont.innerHTML = '<div class="text-center py-6 text-sm text-on-surface-variant">Sin préstamos activos.</div>'; 
+    return; 
+  }
+  cont.innerHTML = prestamos.map((l, i) => `
+    <div class="p-3 bg-surface-container-low border border-outline-variant/60 rounded-lg flex items-center justify-between text-sm">
+      <div>
+        <span class="font-bold text-on-surface block">${l.nombre} <span class="font-mono text-xs text-primary font-normal bg-white px-1 border rounded">${l.codigo}</span></span>
+        <span class="text-xs text-on-surface-variant block">Operario: ${l.persona} · Cant: ${l.cantidad}</span>
+      </div>
+      <button onclick="devolverPrestamo(${i})" class="bg-white border border-outline-variant text-primary font-bold px-3 py-1.5 rounded text-xs hover:bg-primary hover:text-white transition-all flex items-center gap-1 active:scale-95">
+        Reintegrar
+      </button>
+    </div>`).join('');
+}
+
+// Inicialización
+syncDataViews();
+renderPrestamos();
+</script>
+</body>
+</html>
