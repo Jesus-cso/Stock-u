@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const { sql, getPool } = require("./db");
 
 const router = express.Router();
@@ -32,36 +32,49 @@ router.get("/", async (req, res, next) => {
     }
 });
 
-// Registrar un préstamo (descuenta stock)
+// Registrar un préstamo (descuenta stock) - todo en una transacción
 router.post("/", async (req, res, next) => {
+
+    const { id_producto, persona, nota = null, fecha_devolucion_esp = null } = req.body;
+    const cantidad = Number(req.body.cantidad);
+
+    if (!Number.isInteger(Number(id_producto)) || Number(id_producto) <= 0
+        || !persona || !Number.isInteger(cantidad) || cantidad <= 0) {
+        return res.status(400).json({ error: "Faltan datos obligatorios (producto, persona, cantidad)." });
+    }
+
+    let transaction;
+
     try {
-        const { id_producto, persona, cantidad, nota = null, fecha_devolucion_esp = null } = req.body;
-
-        if (!id_producto || !persona || !cantidad || cantidad <= 0) {
-            return res.status(400).json({ error: "Faltan datos obligatorios (producto, persona, cantidad)." });
-        }
-
         const pool = await getPool();
 
-        // Verificar stock disponible
-        const stockActual = await pool.request()
+        transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        // Candado sobre el producto mientras se valida y descuenta
+        const stockActual = await new sql.Request(transaction)
             .input("id", sql.Int, id_producto)
-            .query(`SELECT stock, nombre FROM Productos WHERE id_producto = @id`);
+            .query(`
+                SELECT stock, nombre
+                FROM Productos WITH (UPDLOCK, HOLDLOCK)
+                WHERE id_producto = @id
+            `);
 
         if (stockActual.recordset.length === 0) {
+            await transaction.rollback();
             return res.status(404).json({ error: "Producto no encontrado." });
         }
 
         if (stockActual.recordset[0].stock < cantidad) {
+            await transaction.rollback();
             return res.status(400).json({
                 error: `Stock insuficiente. Disponible: ${stockActual.recordset[0].stock}`
             });
         }
 
-        // Insertar préstamo
-        const result = await pool.request()
+        const result = await new sql.Request(transaction)
             .input("id_producto", sql.Int, id_producto)
-            .input("persona", sql.NVarChar(150), persona)
+            .input("persona", sql.NVarChar(150), String(persona).trim())
             .input("cantidad", sql.Int, cantidad)
             .input("nota", sql.NVarChar(250), nota)
             .input("fecha_devolucion_esp", sql.Date, fecha_devolucion_esp)
@@ -71,43 +84,65 @@ router.post("/", async (req, res, next) => {
                 VALUES (@id_producto, @persona, @cantidad, @nota, @fecha_devolucion_esp)
             `);
 
-        // Descontar stock
-        await pool.request()
+        await new sql.Request(transaction)
             .input("id", sql.Int, id_producto)
             .input("cantidad", sql.Int, cantidad)
             .query(`UPDATE Productos SET stock = stock - @cantidad WHERE id_producto = @id`);
+
+        await transaction.commit();
 
         res.status(201).json({
             mensaje: "Préstamo registrado correctamente.",
             id_prestamo: result.recordset[0].id_prestamo
         });
+
     } catch (error) {
+        if (transaction) {
+            try { await transaction.rollback(); }
+            catch (e) { /* ya estaba cerrada */ }
+        }
         next(error);
     }
 });
 
-// Devolver un préstamo (regresa stock)
+// Devolver un préstamo (regresa stock) - todo en una transacción
 router.put("/:id/devolver", async (req, res, next) => {
-    try {
-        const id = Number(req.params.id);
 
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+        return res.status(400).json({ error: "ID inválido." });
+    }
+
+    let transaction;
+
+    try {
         const pool = await getPool();
 
-        const prestamo = await pool.request()
+        transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        const prestamo = await new sql.Request(transaction)
             .input("id", sql.Int, id)
-            .query(`SELECT id_producto, cantidad, estado FROM Prestamos WHERE id_prestamo = @id`);
+            .query(`
+                SELECT id_producto, cantidad, estado
+                FROM Prestamos WITH (UPDLOCK, HOLDLOCK)
+                WHERE id_prestamo = @id
+            `);
 
         if (prestamo.recordset.length === 0) {
+            await transaction.rollback();
             return res.status(404).json({ error: "Préstamo no encontrado." });
         }
 
-        if (prestamo.recordset[0].estado === 'devuelto') {
+        if (prestamo.recordset[0].estado === "devuelto") {
+            await transaction.rollback();
             return res.status(400).json({ error: "Este préstamo ya fue devuelto." });
         }
 
         const { id_producto, cantidad } = prestamo.recordset[0];
 
-        await pool.request()
+        await new sql.Request(transaction)
             .input("id", sql.Int, id)
             .query(`
                 UPDATE Prestamos
@@ -115,13 +150,20 @@ router.put("/:id/devolver", async (req, res, next) => {
                 WHERE id_prestamo = @id
             `);
 
-        await pool.request()
+        await new sql.Request(transaction)
             .input("id", sql.Int, id_producto)
             .input("cantidad", sql.Int, cantidad)
             .query(`UPDATE Productos SET stock = stock + @cantidad WHERE id_producto = @id`);
 
+        await transaction.commit();
+
         res.json({ mensaje: "Préstamo devuelto y stock restaurado." });
+
     } catch (error) {
+        if (transaction) {
+            try { await transaction.rollback(); }
+            catch (e) { /* ya estaba cerrada */ }
+        }
         next(error);
     }
 });

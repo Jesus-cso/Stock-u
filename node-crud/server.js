@@ -1,59 +1,97 @@
-﻿process.on("unhandledRejection", (reason) => {
+﻿// =====================================
+// IMPORTACIONES
+// =====================================
+
+require("dotenv").config();
+
+const express = require("express");
+const cors = require("cors");
+const rateLimit = require("express-rate-limit"); // npm i express-rate-limit
+
+// =====================================
+// MANEJO DE ERRORES GLOBALES
+// =====================================
+
+process.on("unhandledRejection", (reason) => {
     console.error("PROMESA NO MANEJADA:", reason);
 });
 
 process.on("uncaughtException", (error) => {
     console.error("EXCEPCIÓN NO CAPTURADA:", error);
+    // El proceso queda en estado inconsistente: salir y dejar que PM2/systemd lo reinicie
+    process.exit(1);
 });
 
-const express = require("express");
-const cors = require("cors");
-require("dotenv").config();
+// =====================================
+// VALIDAR VARIABLES
+// =====================================
 
-// ---- Variables obligatorias ----
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
-    console.error("❌ Falta JWT_SECRET en .env (mínimo 32 caracteres).");
+    console.error("❌ JWT_SECRET debe tener mínimo 32 caracteres.");
     process.exit(1);
 }
 
-const verificarToken = require("./middleware/verificarToken");
+const esProduccion = process.env.NODE_ENV === "production";
+
+const rolesAlmacen = (process.env.ROLES_ALMACEN || "")
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
+
+if (rolesAlmacen.length === 0) {
+    console.error("❌ ROLES_ALMACEN no está definido en el .env.");
+    process.exit(1);
+}
+
+// =====================================
+// MIDDLEWARE JWT
+// =====================================
+
+const verificarToken = require("./verificarToken");
+
+const todos = verificarToken();               // cualquier usuario autenticado
+const soloAlmacen = verificarToken(rolesAlmacen); // personal de almacén
+
+// =====================================
+// CREAR APLICACIÓN
+// =====================================
 
 const app = express();
 
-// ---- CORS: solo orígenes conocidos (puedes ampliar con CORS_ORIGINS=a,b,c en .env) ----
+// =====================================
+// CORS
+// =====================================
+
 const origenesPermitidos = [
-    "https://stockupt.app",          // WebView2 de la app WPF
+    "https://stockupt.app",
     "http://localhost:3000",
     "https://localhost:3443",
-    ...(process.env.CORS_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean)
+    ...(process.env.CORS_ORIGINS || "")
+        .split(",")
+        .map(s => s.trim())
+        .filter(Boolean)
 ];
 
 app.use(cors({
     origin: (origin, callback) => {
-        // Sin origin = misma máquina/herramientas (curl, mismo origen)
-        if (!origin || origenesPermitidos.includes(origin)) return callback(null, true);
+        // Sin origin = herramientas como Postman/curl o apps móviles
+        if (!origin || origenesPermitidos.includes(origin)) {
+            return callback(null, true);
+        }
         return callback(new Error("Origen no permitido por CORS"));
     }
 }));
-app.use(express.json());
 
-// ---- Roles ----
-// ROLES_ALMACEN=Admin,Almacenista  (en .env). Si no se define, basta con tener sesión.
-const rolesAlmacen = (process.env.ROLES_ALMACEN || "").split(",").map(s => s.trim()).filter(Boolean);
+app.use(express.json({ limit: "1mb" }));
 
-const todos = verificarToken();                 // cualquier usuario con sesión
-const soloAlmacen = verificarToken(rolesAlmacen); // personal de almacén
+// =====================================
+// RUTAS PÚBLICAS
+// =====================================
 
-//=====================================
-// RUTA PRINCIPAL
-//=====================================
 app.get("/", (req, res) => {
     res.json({ mensaje: "API Stock funcionando correctamente" });
 });
 
-//=====================================
-// STATUS (usado por la app WPF para saber si el backend ya arrancó)
-//=====================================
 app.get("/api/status", (req, res) => {
     res.json({
         estado: "conectado",
@@ -61,56 +99,111 @@ app.get("/api/status", (req, res) => {
     });
 });
 
-//=====================================
-// RUTAS
-//=====================================
-// Libre: login y registro
-app.use("/auth", require("./auth"));
+// Límite de intentos para evitar fuerza bruta en el login
+const limitadorAuth = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Demasiados intentos, intenta más tarde" }
+});
+
+app.use("/auth", limitadorAuth, require("./auth"));
+
+// =====================================
+// RUTAS PARA TODOS LOS USUARIOS AUTENTICADOS
+// =====================================
 
 app.use("/productos", todos, require("./productos"));
+app.use("/miembros", todos, require("./miembros"));
+app.use("/alertas", todos, require("./alertas"));
+app.use("/proyectos", todos, require("./proyectos"));
+app.use("/escaneos", todos, require("./Escaneos")); // ← antes sin autenticación
+
+// =====================================
+// RUTAS SOLO PERSONAL DE ALMACÉN
+// =====================================
+
 app.use("/proveedores", soloAlmacen, require("./proveedores"));
 app.use("/anaqueles", soloAlmacen, require("./anaqueles"));
-app.use("/miembros", todos, require("./miembros"));
 app.use("/crearrouter", soloAlmacen, require("./crearrouter"));
 app.use("/notasEntrada", soloAlmacen, require("./notasEntrada"));
-app.use("/alertas", todos, require("./alertas"));
-
-// PDF primero para que /Notas/:id/pdf no choque con las otras rutas de /Notas
-app.use("/Notas", soloAlmacen, require("./pdfNota"));
-app.use("/Notas", soloAlmacen, require("./Notas"));
-
-// Proyectos (líder por número de proyecto)
-app.use("/proyectos", todos, require("./proyectos"));
 app.use("/prestamos", soloAlmacen, require("./prestamo"));
 
-// Escaneos del celular: se protegen con ESCANER_TOKEN (ver Escaneos.js)
-app.use("/escaneos", require("./Escaneos"));
+// Un solo montaje para /Notas con ambos routers
+app.use("/Notas", soloAlmacen, require("./pdfNota"), require("./Notas"));
 
-// Scanner en el navegador del celular (pagina + HTTPS local)
+// =====================================
+// ESCÁNER MÓVIL
+// =====================================
+
 const movil = require("./movil");
 movil.montar(app);
 
-//=====================================
+// =====================================
+// 404
+// =====================================
+
+app.use((req, res) => {
+    res.status(404).json({ error: "Ruta no encontrada" });
+});
+
+// =====================================
 // MANEJO DE ERRORES
-//=====================================
+// =====================================
+
 app.use((err, req, res, next) => {
-    console.error(err);
-    res.status(500).json({
-        error: err.message || "Error interno del servidor"
+    console.error("ERROR DEL SERVIDOR:", err);
+
+    if (res.headersSent) {
+        return next(err);
+    }
+
+    const esCors = err.message === "Origen no permitido por CORS";
+    const status = esCors ? 403 : (err.status || 500);
+
+    res.status(status).json({
+        // En producción no se expone el detalle de errores internos
+        error: (esCors || !esProduccion || status < 500)
+            ? err.message
+            : "Error interno del servidor"
     });
 });
 
-//=====================================
-// INICIAR SERVIDOR
-//=====================================
+// =====================================
+// INICIAR SERVIDOR HTTP
+// =====================================
+
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+const servidor = app.listen(PORT, () => {
     console.log("====================================");
-    console.log("Servidor iniciado");
-    console.log("http://localhost:" + PORT);
+    console.log("       STOCKUP INICIADO");
+    console.log("====================================");
+    console.log("Servidor: http://localhost:" + PORT);
+    console.log("Estado: FUNCIONANDO");
     console.log("====================================");
 });
 
-// HTTPS local para que el celular pueda usar la camara (puerto 3443)
+servidor.on("error", (err) => {
+    if (err.code === "EADDRINUSE") {
+        console.error(`❌ El puerto ${PORT} ya está en uso.`);
+    } else {
+        console.error("❌ Error al iniciar el servidor:", err);
+    }
+    process.exit(1);
+});
+
+// Cierre ordenado
+["SIGINT", "SIGTERM"].forEach(señal => {
+    process.on(señal, () => {
+        console.log(`\n${señal} recibido, cerrando servidor...`);
+        servidor.close(() => process.exit(0));
+    });
+});
+
+// =====================================
+// HTTPS LOCAL PARA ESCÁNER
+// =====================================
+
 movil.iniciarHttps(app);
