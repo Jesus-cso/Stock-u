@@ -8,8 +8,9 @@ const router = express.Router();
     GET /Notas/salida  (también GET /Notas)
 
     Devuelve un arreglo de notas, cada una con:
-    - todas las columnas de Notas (incluye id_proyecto)
+    - todas las columnas de Notas (incluye id_proyecto, id_usuario, estado)
     - numero_proyecto y lider_proyecto (si la nota tiene proyecto)
+    - capturista: nombre del usuario que registró la salida
     - tipo: "salida"
     - items: [{ id_nota, id_producto, cantidad, producto }]
 ===================================*/
@@ -20,10 +21,12 @@ router.get(["/", "/salida"], async (req, res, next) => {
         const notasResult = await pool.request().query(`
             SELECT n.*,
                    pr.numero_proyecto,
-                   ml.nombre AS lider_proyecto
+                   ml.nombre AS lider_proyecto,
+                   u.nombre  AS capturista
             FROM Notas n
             LEFT JOIN Proyectos pr ON pr.id_proyecto = n.id_proyecto
             LEFT JOIN Miembros ml  ON ml.id_miembro  = pr.id_lider
+            LEFT JOIN Usuarios u   ON u.id_usuario   = n.id_usuario
             ORDER BY n.id_nota DESC
         `);
 
@@ -53,7 +56,7 @@ router.get(["/", "/salida"], async (req, res, next) => {
 
 /*==================================
     GUARDAR NOTA DE SALIDA COMPLETA
-    POST /Notas/salida
+    POST /Notas/salida   (requiere token)
 
     Body esperado:
     {
@@ -67,8 +70,10 @@ router.get(["/", "/salida"], async (req, res, next) => {
         ]
     }
 
-    - Crea el encabezado en Notas (con folio generado por FolioSeq).
-    - Si viene numero_proyecto, busca el proyecto y guarda su id_proyecto.
+    - Crea el encabezado en Notas (folio generado por FolioSeq)
+      y guarda qué usuario del sistema la capturó.
+    - Bloquea la fila de cada producto mientras valida el stock,
+      así dos capturistas no pueden sacar el mismo último producto.
     - Inserta cada producto/cantidad en Salidas, ligado a esa Nota.
     - El trigger TR_ActualizarStockSalida descuenta el stock solo.
     - Todo dentro de una transacción: si algo falla, no se guarda nada.
@@ -109,20 +114,13 @@ router.post("/salida", async (req, res, next) => {
         transaction = new sql.Transaction(pool);
         await transaction.begin();
 
-        // =================================================
-        // GENERAR FOLIO (secuencia compartida FolioSeq)
-        // =================================================
-
+        // ---- Folio (secuencia compartida FolioSeq) ----
         const folioResult = await new sql.Request(transaction)
             .query(`SELECT NEXT VALUE FOR FolioSeq AS numero`);
 
         const folio = "UPT-S-" + folioResult.recordset[0].numero;
 
-
-        // =================================================
-        // RESOLVER PROYECTO (opcional) POR SU NÚMERO
-        // =================================================
-
+        // ---- Proyecto opcional ----
         let idProyecto = null;
         let liderProyecto = null;
 
@@ -146,35 +144,32 @@ router.post("/salida", async (req, res, next) => {
             liderProyecto = proy.recordset[0].lider;
         }
 
-
-        // =================================================
-        // CREAR ENCABEZADO EN Notas
-        // =================================================
-
+        // ---- Encabezado ----
         const notaResult = await new sql.Request(transaction)
             .input("matricula", sql.NVarChar(30), String(matricula).trim())
             .input("nombre", sql.NVarChar(150), String(nombre).trim())
             .input("area", sql.NVarChar(100), area ? String(area).trim() : null)
             .input("folio", sql.NVarChar(20), folio)
             .input("id_proyecto", sql.Int, idProyecto)
+            .input("id_usuario", sql.Int, req.usuario.id_usuario)
             .query(`
-                INSERT INTO Notas (matricula, nombre, area, folio, id_proyecto)
+                INSERT INTO Notas (matricula, nombre, area, folio, id_proyecto, id_usuario)
                 OUTPUT INSERTED.id_nota
-                VALUES (@matricula, @nombre, @area, @folio, @id_proyecto)
+                VALUES (@matricula, @nombre, @area, @folio, @id_proyecto, @id_usuario)
             `);
 
         const idNota = notaResult.recordset[0].id_nota;
 
-
-        // =================================================
-        // VALIDAR STOCK DISPONIBLE Y CREAR RENGLONES EN Salidas
-        // =================================================
-
+        // ---- Renglones (con candado sobre el producto) ----
         for (const item of items) {
 
             const stockActual = await new sql.Request(transaction)
                 .input("id_producto", sql.Int, item.id_producto)
-                .query(`SELECT stock, nombre FROM Productos WHERE id_producto = @id_producto`);
+                .query(`
+                    SELECT stock, nombre
+                    FROM Productos WITH (UPDLOCK, HOLDLOCK)
+                    WHERE id_producto = @id_producto
+                `);
 
             if (stockActual.recordset.length === 0) {
                 throw new Error(`El producto con id ${item.id_producto} no existe.`);
@@ -198,9 +193,7 @@ router.post("/salida", async (req, res, next) => {
                 `);
         }
 
-
         await transaction.commit();
-
 
         res.status(201).json({
             mensaje: "Nota de salida guardada correctamente.",
@@ -220,9 +213,7 @@ router.post("/salida", async (req, res, next) => {
             }
         }
 
-        // Errores de negocio (stock insuficiente, producto o proyecto
-        // inexistente) se devuelven como 400 en vez de 500.
-
+        // Errores de negocio -> 400 en vez de 500
         if (error.message && (
             error.message.includes("Stock insuficiente") ||
             error.message.includes("no existe")
@@ -234,4 +225,103 @@ router.post("/salida", async (req, res, next) => {
     }
 });
 
-module.exports = router;8
+
+/*==================================
+    CANCELAR NOTA DE SALIDA
+    PUT /Notas/:id/cancelar   body: { "motivo": "Error de captura" }
+
+    - Devuelve al stock lo que salió en esa nota.
+    - La nota NO se borra: queda marcada como cancelada, con
+      motivo, fecha y quién la canceló.
+    - Si la nota ya estaba cancelada, responde 400.
+
+    OJO: si tu trigger TR_ActualizarStockSalida también se dispara en
+    UPDATE/DELETE sobre Salidas, revísalo; aquí no se toca Salidas.
+===================================*/
+router.put("/:id/cancelar", async (req, res, next) => {
+
+    const idNota = Number(req.params.id);
+    const motivo = String(req.body?.motivo ?? "").trim();
+
+    if (!Number.isInteger(idNota) || idNota <= 0) {
+        return res.status(400).json({ error: "ID de nota inválido." });
+    }
+
+    if (motivo.length < 5) {
+        return res.status(400).json({ error: "Escribe el motivo de la cancelación." });
+    }
+
+    let transaction;
+
+    try {
+
+        const pool = await getPool();
+
+        transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        const nota = await new sql.Request(transaction)
+            .input("id", sql.Int, idNota)
+            .query(`SELECT estado FROM Notas WITH (UPDLOCK, HOLDLOCK) WHERE id_nota = @id`);
+
+        if (nota.recordset.length === 0) {
+            throw new Error("La nota no existe.");
+        }
+
+        if (nota.recordset[0].estado === "cancelada") {
+            throw new Error("La nota ya estaba cancelada.");
+        }
+
+        await new sql.Request(transaction)
+            .input("id", sql.Int, idNota)
+            .query(`
+                UPDATE p
+                SET p.stock = p.stock + s.total
+                FROM Productos p
+                JOIN (
+                    SELECT id_producto, SUM(cantidad) AS total
+                    FROM Salidas
+                    WHERE id_nota = @id
+                    GROUP BY id_producto
+                ) s ON s.id_producto = p.id_producto
+            `);
+
+        await new sql.Request(transaction)
+            .input("id", sql.Int, idNota)
+            .input("motivo", sql.NVarChar(200), motivo.slice(0, 200))
+            .input("por", sql.Int, req.usuario.id_usuario)
+            .query(`
+                UPDATE Notas
+                SET estado = 'cancelada',
+                    fecha_cancelacion = GETDATE(),
+                    motivo_cancelacion = @motivo,
+                    cancelada_por = @por
+                WHERE id_nota = @id
+            `);
+
+        await transaction.commit();
+
+        res.json({ mensaje: "Nota cancelada y stock devuelto." });
+
+    } catch (error) {
+
+        if (transaction) {
+            try {
+                await transaction.rollback();
+            } catch (errorRollback) {
+                console.error("❌ Error al hacer rollback:", errorRollback);
+            }
+        }
+
+        if (error.message && (
+            error.message.includes("no existe") ||
+            error.message.includes("ya estaba cancelada")
+        )) {
+            return res.status(400).json({ error: error.message });
+        }
+
+        next(error);
+    }
+});
+
+module.exports = router;

@@ -6,31 +6,51 @@ const router = express.Router();
 
 /*==================================
             REGISTRO
+    POST /crearrouter/registro
+
+    body: {
+        nombre, apellidos, telefono (opcional),
+        numero_control, password,
+        codigo_registro        <-- debe coincidir con REGISTRO_CODIGO del .env
+    }
 ===================================*/
 
 router.post("/registro", async (req, res, next) => {
+
+    let transaction;
+
     try {
 
-        const {
-            nombre,
-            apellidos,
-            telefono,
-            numero_control,
-            password
-        } = req.body;
+        // Solo quien conozca el código puede crear cuentas
+        const codigoValido = process.env.REGISTRO_CODIGO;
 
-        // Validar campos obligatorios
-        if (!nombre || !apellidos || !numero_control || !password) {
+        if (!codigoValido || req.body.codigo_registro !== codigoValido) {
+            return res.status(403).json({
+                error: "Código de registro incorrecto."
+            });
+        }
+
+        const { nombre, apellidos, numero_control, password } = req.body;
+
+        // Evita que .trim() truene con 500 si llega algo que no es texto
+        if ([nombre, apellidos, numero_control, password]
+            .some(v => typeof v !== "string" || !v.trim())) {
             return res.status(400).json({
                 error: "Todos los campos obligatorios deben ser completados."
             });
         }
 
-        const pool = await getPool();
+        if (password.length < 6) {
+            return res.status(400).json({
+                error: "La contraseña debe tener al menos 6 caracteres."
+            });
+        }
 
         const nombreCompleto = `${nombre.trim()} ${apellidos.trim()}`;
         const usuarioNombre = numero_control.trim();
         const correoFake = `${usuarioNombre}@vistasstock.com`;
+
+        const pool = await getPool();
 
         // Verificar si ya existe el usuario
         const checkUser = await pool.request()
@@ -48,11 +68,13 @@ router.post("/registro", async (req, res, next) => {
         }
 
         // Encriptar contraseña
-        const salt = await bcrypt.genSalt(10);
-        const passwordHash = await bcrypt.hash(password, salt);
+        const passwordHash = await bcrypt.hash(password, 10);
 
-        // Insertar usuario
-        const resultUser = await pool.request()
+        // Usuario + trabajador en una sola transacción: o se crean los dos o ninguno
+        transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        const resultUser = await new sql.Request(transaction)
             .input("nombre", sql.NVarChar(100), nombreCompleto)
             .input("correo", sql.NVarChar(150), correoFake)
             .input("usuario", sql.NVarChar(50), usuarioNombre)
@@ -65,23 +87,23 @@ router.post("/registro", async (req, res, next) => {
                     correo,
                     usuario,
                     password_hash,
-                    rol
+                    rol,
+                    activo
                 )
-
                 OUTPUT INSERTED.id_usuario
-
                 VALUES
                 (
                     @nombre,
                     @correo,
                     @usuario,
                     @password_hash,
-                    @rol
+                    @rol,
+                    1
                 )
             `);
 
         // Registrar trabajador si no existe
-        await pool.request()
+        await new sql.Request(transaction)
             .input("matricula", sql.NVarChar(30), usuarioNombre)
             .input("nombre", sql.NVarChar(150), nombreCompleto)
             .query(`
@@ -92,26 +114,36 @@ router.post("/registro", async (req, res, next) => {
                     WHERE matricula = @matricula
                 )
                 BEGIN
-                    INSERT INTO Trabajadores
-                    (
-                        matricula,
-                        nombre
-                    )
-                    VALUES
-                    (
-                        @matricula,
-                        @nombre
-                    )
+                    INSERT INTO Trabajadores (matricula, nombre)
+                    VALUES (@matricula, @nombre)
                 END
             `);
+
+        await transaction.commit();
 
         res.status(201).json({
             mensaje: "Usuario registrado con éxito.",
             id_usuario: resultUser.recordset[0].id_usuario
         });
-        
+
     } catch (error) {
-        console.error("Error en registro:", error);
+
+        if (transaction) {
+            try {
+                await transaction.rollback();
+            } catch (errorRollback) {
+                console.error("❌ Error al hacer rollback:", errorRollback);
+            }
+        }
+
+        // Dos registros a la vez con el mismo número de control
+        if (error.number === 2627 || error.number === 2601) {
+            return res.status(400).json({
+                error: "El número de control ya se encuentra registrado."
+            });
+        }
+
+        console.error("Error en registro:", error.message);
         next(error);
     }
 });
