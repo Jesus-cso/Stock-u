@@ -49,7 +49,7 @@ if (rolesAlmacen.length === 0) {
 
 const verificarToken = require("./verificarToken");
 
-const todos = verificarToken();               // cualquier usuario autenticado
+const todos = verificarToken();                   // cualquier usuario autenticado
 const soloAlmacen = verificarToken(rolesAlmacen); // personal de almacén
 
 // =====================================
@@ -72,10 +72,20 @@ const origenesPermitidos = [
         .filter(Boolean)
 ];
 
+// En desarrollo se aceptan origenes de la red local (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+// para que el escáner móvil funcione sin tocar el .env cada vez que cambie la IP.
+const redLocal = /^https?:\/\/(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d+)?$/;
+
+function origenPermitido(origin) {
+    if (!origin) return true; // Postman/curl o apps móviles sin Origin
+    if (origenesPermitidos.includes(origin)) return true;
+    if (!esProduccion && redLocal.test(origin)) return true;
+    return false;
+}
+
 app.use(cors({
     origin: (origin, callback) => {
-        // Sin origin = herramientas como Postman/curl o apps móviles
-        if (!origin || origenesPermitidos.includes(origin)) {
+        if (origenPermitido(origin)) {
             return callback(null, true);
         }
         return callback(new Error("Origen no permitido por CORS"));
@@ -83,6 +93,19 @@ app.use(cors({
 }));
 
 app.use(express.json({ limit: "1mb" }));
+
+// =====================================
+// COMPATIBILIDAD CON PREFIJO /api
+// =====================================
+// Permite llamar tanto /productos como /api/productos.
+// /api/status se deja intacto porque tiene su propia ruta.
+
+app.use((req, res, next) => {
+    if (req.url.startsWith("/api/") && !req.url.startsWith("/api/status")) {
+        req.url = req.url.slice(4);
+    }
+    next();
+});
 
 // =====================================
 // RUTAS PÚBLICAS
@@ -118,7 +141,7 @@ app.use("/productos", todos, require("./productos"));
 app.use("/miembros", todos, require("./miembros"));
 app.use("/alertas", todos, require("./alertas"));
 app.use("/proyectos", todos, require("./proyectos"));
-app.use("/escaneos", todos, require("./Escaneos")); // ← antes sin autenticación
+app.use("/escaneos", todos, require("./Escaneos"));
 
 // =====================================
 // RUTAS SOLO PERSONAL DE ALMACÉN
@@ -141,7 +164,7 @@ const movil = require("./movil");
 movil.montar(app);
 
 // =====================================
-// 404
+// 404 (siempre después de todas las rutas)
 // =====================================
 
 app.use((req, res) => {

@@ -87,10 +87,10 @@ router.put("/:id", async (req, res, next) => {
             .input("descripcion", sql.NVarChar(250), descripcion ? String(descripcion).trim() : null)
             .input("contenido", sql.NVarChar(150), contenido ? String(contenido).trim() : null)
             .query(`
-                UPDATE Anaqueles 
-                SET codigo = @codigo, 
-                    ubicacion = @ubicacion, 
-                    descripcion = @descripcion, 
+                UPDATE Anaqueles
+                SET codigo = @codigo,
+                    ubicacion = @ubicacion,
+                    descripcion = @descripcion,
                     contenido = @contenido
                 WHERE id_anaquel = @id
             `);
@@ -138,4 +138,4 @@ router.delete("/:id", async (req, res, next) => {
     }
 });
 
-module.exports = router;4
+module.exports = router;
