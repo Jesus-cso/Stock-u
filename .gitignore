@@ -10,3 +10,8 @@ node-crud/node_modules/
 npm-debug.log
 node-crud/.env
 node-crud/certs/
+
+# Archivos de entorno
+.env
+.env.*
+!.env.example
