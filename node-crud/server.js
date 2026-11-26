@@ -4,6 +4,7 @@
 
 require("dotenv").config();
 
+const path = require("path");
 const crypto = require("crypto");
 const express = require("express");
 const cors = require("cors");
@@ -136,11 +137,17 @@ app.use((req, res, next) => {
 });
 
 // =====================================
+// ARCHIVOS ESTÁTICOS (FRONTEND)
+// =====================================
+
+app.use(express.static(path.join(__dirname, "wwwroot")));
+
+// =====================================
 // RUTAS PÚBLICAS
 // =====================================
 
 app.get("/", (req, res) => {
-    res.json({ mensaje: "API Stock funcionando correctamente" });
+    res.sendFile(path.join(__dirname, "wwwroot", "index.html"));
 });
 
 app.get("/api/status", (req, res) => {
@@ -203,61 +210,4 @@ app.use((req, res) => {
 // MANEJO DE ERRORES
 // =====================================
 
-app.use((err, req, res, next) => {
-    console.error("ERROR DEL SERVIDOR:", err);
-
-    if (res.headersSent) {
-        return next(err);
-    }
-
-    const esCors = err.message === "Origen no permitido por CORS";
-    const status = esCors ? 403 : (err.status || 500);
-
-    res.status(status).json({
-        // En producción no se expone el detalle de errores internos
-        error: (esCors || !esProduccion || status < 500)
-            ? err.message
-            : "Error interno del servidor"
-    });
-});
-
-// =====================================
-// INICIAR SERVIDOR HTTP
-// =====================================
-
-const PORT = process.env.PORT || 3000;
-
-const servidor = app.listen(PORT, () => {
-    console.log("====================================");
-    console.log("       STOCKUP INICIADO");
-    console.log("====================================");
-    console.log("Servidor: http://localhost:" + PORT);
-    console.log("Estado: FUNCIONANDO");
-    console.log("====================================");
-});
-
-servidor.on("error", (err) => {
-    if (err.code === "EADDRINUSE") {
-        console.error(`❌ El puerto ${PORT} ya está en uso.`);
-    } else {
-        console.error("❌ Error al iniciar el servidor:", err);
-    }
-    process.exit(1);
-});
-
-// Cierre ordenado
-["SIGINT", "SIGTERM"].forEach(señal => {
-    process.on(señal, () => {
-        console.log(`\n${señal} recibido, cerrando servidor...`);
-        servidor.close(() => process.exit(0));
-    });
-});
-
-// =====================================
-// HTTPS LOCAL PARA ESCÁNER
-// =====================================
-
-// En Render el HTTPS ya lo pone la plataforma
-if (!process.env.RENDER) {
-    movil.iniciarHttps(app);
-}
+app.use((err, req, res,
