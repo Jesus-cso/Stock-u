@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 
@@ -6,7 +7,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iniciar sesión</title>
 
-    <!-- Solución al error favicon.ico (net::ERR_FILE_NOT_FOUND) -->
     <link rel="shortcut icon" href="#">
 
     <style>
@@ -271,7 +271,9 @@
 <body>
     <main>
         <div class="card">
+
             <div class="logo">🏢</div>
+
             <h1>Iniciar sesión</h1>
             <p class="subtitle">Ingresa tus credenciales para continuar</p>
 
@@ -279,53 +281,72 @@
             <div class="server-error" id="serverError"></div>
 
             <form id="loginForm" novalidate>
-                <!-- NÚMERO DE CONTROL -->
+
                 <div class="field">
                     <label for="number">Número de Control</label>
-                    <svg class="ico" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+
+                    <svg class="ico" fill="none" stroke="currentColor"
+                         stroke-width="2" viewBox="0 0 24 24">
                         <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
                         <circle cx="12" cy="7" r="4"></circle>
                     </svg>
-                    <input id="number" name="numcontrol" placeholder="Número de control" type="text" autocomplete="username">
-                    <div class="error-msg" id="numerror">⚠ Ingresa un número de control válido.</div>
+
+                    <input id="number" name="numcontrol"
+                           placeholder="Número de control"
+                           type="text" autocomplete="username">
+
+                    <div class="error-msg" id="numerror">
+                        ⚠ Ingresa un número de control válido.
+                    </div>
                 </div>
 
-                <!-- CONTRASEÑA -->
                 <div class="field">
+
                     <div class="row-top">
                         <label for="password">Contraseña</label>
                         <a class="forgot" href="#">¿Olvidaste tu contraseña?</a>
                     </div>
-                    <svg class="ico" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+
+                    <svg class="ico" fill="none" stroke="currentColor"
+                         stroke-width="2" viewBox="0 0 24 24">
                         <rect height="11" rx="2" width="18" x="3" y="11"></rect>
                         <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                     </svg>
-                    <input id="password" name="password" placeholder="••••••••" type="password" autocomplete="current-password">
-                    <button type="button" class="toggle-btn" id="toggleBtn">👁</button>
-                    <div class="error-msg" id="passErr">⚠ La contraseña debe tener al menos 6 caracteres.</div>
+
+                    <input id="password" name="password"
+                           placeholder="••••••••"
+                           type="password" autocomplete="current-password">
+
+                    <button type="button" class="toggle-btn" id="toggleBtn">
+                        👁
+                    </button>
+
+                    <div class="error-msg" id="passErr">
+                        ⚠ La contraseña debe tener al menos 6 caracteres.
+                    </div>
                 </div>
 
-                <!-- RECORDAR SESIÓN -->
                 <div class="check-row">
                     <input id="remember" name="remember" type="checkbox">
                     <label for="remember">Recordar mi sesión</label>
                 </div>
 
-                <!-- BOTÓN LOGIN -->
                 <button class="btn-submit" id="btnEntrar" type="submit">
                     <span id="btnEntrarTexto">Entrar</span> →
                 </button>
 
-                <!-- GOOGLE -->
                 <div class="divider">o continúa con</div>
-                <button class="btn-google" type="button" onclick="alert('Inicio de sesión con Google aún no está configurado.')">
+
+                <button class="btn-google" type="button"
+                        onclick="alert('Inicio de sesión con Google aún no está configurado.')">
                     🔵 Continuar con Google
                 </button>
 
-                <!-- REGISTRO -->
                 <p class="register">
-                    ¿No tienes cuenta? <a href="Crearcuenta.html">Regístrate gratis</a>
+                    ¿No tienes cuenta?
+                    <a href="Crearcuenta.html">Regístrate gratis</a>
                 </p>
+
             </form>
         </div>
     </main>
@@ -343,12 +364,10 @@
         const successMsg = document.getElementById("successMsg");
         const serverError = document.getElementById("serverError");
 
-        // Mostrar / ocultar contraseña
         document.getElementById("toggleBtn").addEventListener("click", () => {
             password.type = password.type === "password" ? "text" : "password";
         });
 
-        // Evento Submit
         loginForm.addEventListener("submit", async (event) => {
             event.preventDefault();
 
@@ -374,9 +393,6 @@
             btnEntrarTexto.textContent = "Verificando...";
 
             try {
-                console.log("🔐 Intentando iniciar sesión...");
-                console.log("👤 Usuario:", usuario);
-
                 const respuesta = await fetch(`${API_URL}/auth/login`, {
                     method: "POST",
                     headers: {
@@ -389,28 +405,40 @@
                     })
                 });
 
-                console.log("📡 Estado:", respuesta.status);
                 const datos = await respuesta.json();
-                console.log("📦 Respuesta:", datos);
 
                 if (!respuesta.ok) {
-                    serverError.textContent = "⚠ " + (datos.error || "No se pudo iniciar sesión.");
+                    serverError.textContent =
+                        "⚠ " + (datos.error || "No se pudo iniciar sesión.");
                     serverError.style.display = "block";
                     return;
                 }
 
-                console.log("✅ Login exitoso", datos.usuario);
+                if (!datos.token || !datos.usuario) {
+                    serverError.textContent =
+                        "El servidor no devolvió los datos necesarios para iniciar sesión.";
+                    serverError.style.display = "block";
+                    return;
+                }
 
                 const usuarioActivo = JSON.stringify(datos.usuario);
                 const recordar = document.getElementById("remember").checked;
 
-                if (recordar) {
-                    localStorage.setItem("usuarioActivo", usuarioActivo);
-                } else {
-                    sessionStorage.setItem("usuarioActivo", usuarioActivo);
-                }
+                ["usuarioActivo", "stockToken", "token"].forEach(k => {
+                    localStorage.removeItem(k);
+                    sessionStorage.removeItem(k);
+                });
 
-                successMsg.textContent = "✅ ¡Sesión iniciada correctamente!";
+                const almacenamientoSesion = recordar
+                    ? localStorage
+                    : sessionStorage;
+
+                almacenamientoSesion.setItem("usuarioActivo", usuarioActivo);
+                almacenamientoSesion.setItem("stockToken", datos.token);
+
+                console.log("Login exitoso", datos.usuario);
+
+                successMsg.textContent = "¡Sesión iniciada correctamente!";
                 successMsg.style.display = "block";
 
                 setTimeout(() => {
@@ -418,9 +446,13 @@
                 }, 700);
 
             } catch (error) {
-                console.error("❌ Error:", error);
-                serverError.textContent = "⚠ No se pudo conectar con el servidor. Verifica que Node.js esté ejecutándose en http://localhost:3000";
+                console.error("Error:", error);
+
+                serverError.textContent =
+                    "No se pudo conectar con el servidor. Verifica que Node.js esté ejecutándose en http://localhost:3000";
+
                 serverError.style.display = "block";
+
             } finally {
                 btnEntrar.disabled = false;
                 btnEntrarTexto.textContent = "Entrar";

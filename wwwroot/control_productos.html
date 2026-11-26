@@ -4,8 +4,9 @@
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>StockUPT</title>
+    <link rel="icon" href="data:,">
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght=400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
     <script id="tailwind-config">
         tailwind.config = {
@@ -154,6 +155,7 @@
     </style>
 </head>
 <body class="bg-background text-on-background min-h-screen flex">
+    <script src="sesion.js"></script>
 
     <aside class="fixed left-0 top-0 h-full flex flex-col py-lg bg-surface-container-lowest border-r border-outline-variant w-64 z-50 overflow-y-auto">
         <div class="px-md mb-md">
@@ -161,10 +163,9 @@
             <p class="text-label-md font-label-md text-on-surface-variant">Sesión Activa</p>
         </div>
         <div class="sidebar-logout">
-            <a asp-action="Logout" asp-controller="Account" href="Dashbord.html" title="Cerrar sesión">
+            <a href="Dashbord.html" title="Volver al menú">
                 ⬅
             </a>
-
 
             <nav class="space-y-1 px-2 mb-lg" id="side-nav">
                 <button onclick="showSection('ver')" id="side-ver" class="w-full text-left text-on-surface-variant hover:bg-surface-container-high rounded-lg px-4 py-2.5 flex items-center gap-3 transition-all active:scale-95">
@@ -214,6 +215,7 @@
                     <span>Cerrar Sesión</span>
                 </a>
             </div>
+        </div>
     </aside>
 
     <main class="ml-64 flex-1 flex flex-col min-h-screen">
@@ -511,7 +513,7 @@
                 </div>
             </div>
 
-            <!-- SECCIÓN DE PRODUCTOS DAÑADOS (NUEVA) -->
+            <!-- SECCIÓN DE PRODUCTOS DAÑADOS -->
             <div id="sec-danados" class="section-pane space-y-6">
                 <div>
                     <h2 class="text-2xl font-bold text-on-surface mb-xs">Mermas y Productos Dañados</h2>
@@ -578,7 +580,6 @@
                         <p id="bento-criticos" class="text-2xl font-bold text-on-surface">0</p>
                     </div>
                 </div>
-                <!-- TOTAL MERMAS BENTO PANEL -->
                 <div class="bg-red-50 rounded-xl p-lg border border-red-200 flex items-center gap-md">
                     <div class="bg-red-200 p-3 rounded-full text-red-800 flex items-center justify-center"><span class="material-symbols-outlined">heart_broken</span></div>
                     <div>
@@ -594,30 +595,44 @@
     <div class="toast" id="toast"></div>
 
     <script>
-        // URL base del backend Node.js
-        const API_URL = "http://localhost:3000";
+        // sesion.js ya definio window.STOCK_API y agrega el token a cada fetch.
+        const API_URL = window.STOCK_API || "http://localhost:3000";
+
+        /* Pide una lista al servidor y avisa con un mensaje claro si falla
+           (sesion vencida, error del servidor o respuesta que no es una lista). */
+        async function pedirLista(ruta) {
+            const r = await fetch(API_URL + ruta);
+            const d = await r.json().catch(() => ({}));
+            if (r.status === 401 || r.status === 403) throw new Error("Tu sesión no es válida o expiró. Inicia sesión de nuevo.");
+            if (!r.ok || !Array.isArray(d)) throw new Error(d.error || "No se pudo cargar " + ruta);
+            return d;
+        }
+
+        /* Lanza un Error con el mensaje real del servidor cuando una peticion falla. */
+        async function errorDeRespuesta(respuesta) {
+            if (respuesta.status === 401 || respuesta.status === 403) {
+                return new Error("Tu sesión no es válida o expiró. Inicia sesión de nuevo.");
+            }
+            const d = await respuesta.json().catch(() => ({}));
+            return new Error(d.error || "El servidor respondió con error (" + respuesta.status + ")");
+        }
 
         // Base de datos reactiva en memoria (se llena desde el backend)
         let productos = [];
         let prestamos = [];
-        let danados = []; // Nueva base de datos para incidencias de daños
+        let danados = [];
         let editIdx = -1;
 
         // ==========================================
         // CONEXIÓN CON EL BACKEND
         // ==========================================
 
-        // Carga los productos reales desde el backend (Node + SQL Server)
         async function cargarProductosDesdeAPI() {
             try {
-                const respuesta = await fetch(`${API_URL}/productos`);
-                const datos = await respuesta.json();
+                const datos = await pedirLista("/productos");
 
-                // Adaptamos los campos del backend a los que usa esta vista
                 productos = datos.map(p => ({
                     id_producto: p.id_producto,
-                    // Usamos el código de barras real si el producto ya lo tiene escaneado/capturado;
-                    // si todavía no tiene uno asignado, mostramos un identificador temporal P-id.
                     codigo: p.codigo_barras || ("P-" + p.id_producto),
                     tieneCodigoReal: !!p.codigo_barras,
                     nombre: p.nombre,
@@ -629,20 +644,16 @@
                 actualizarUI();
             } catch (error) {
                 console.error("Error al cargar productos:", error);
-                triggerToast("No se pudo conectar con el servidor. ¿Está corriendo el backend?");
+                triggerToast(error.message || "No se pudo conectar con el servidor. ¿Está corriendo el backend?");
             }
         }
 
-        // Llena los selectores de Anaquel y Proveedor con datos reales
         async function cargarSelects() {
             try {
-                const [respAnaqueles, respProveedores] = await Promise.all([
-                    fetch(`${API_URL}/anaqueles`),
-                    fetch(`${API_URL}/proveedores`)
+                const [anaqueles, proveedores] = await Promise.all([
+                    pedirLista("/anaqueles"),
+                    pedirLista("/proveedores")
                 ]);
-
-                const anaqueles = await respAnaqueles.json();
-                const proveedores = await respProveedores.json();
 
                 const selectAnaquel = document.getElementById('reg-anaquel');
                 anaqueles.forEach(a => {
@@ -661,6 +672,7 @@
                 });
             } catch (error) {
                 console.error("Error al cargar anaqueles/proveedores:", error);
+                triggerToast(error.message);
             }
         }
 
@@ -670,9 +682,8 @@
         let camaraStream = null;
         let barcodeDetector = null;
         let detectorLoopId = null;
-        let destinoEscaneo = 'scan-input'; // 'scan-input' (sección Escanear) o 'reg-codigo' (sección Registrar)
+        let destinoEscaneo = 'scan-input';
 
-        // Abre la cámara desde el botón de "Registrar" para capturar el código de barras ahí mismo
         function escanearParaRegistro() {
             destinoEscaneo = 'reg-codigo';
             showSection('escanear');
@@ -961,7 +972,6 @@
             inp.value = '';
         }
 
-        // Salta a la pantalla de Registrar con el código ya capturado desde el escáner
         function registrarDesdeEscaneo() {
             const code = document.getElementById('scan-codigo-nuevo').textContent;
             showSection('registrar');
@@ -969,7 +979,7 @@
             document.getElementById('reg-nombre').focus();
         }
 
-        // Registrar nuevo producto (ahora guarda en SQL Server, incluyendo marca, precio, anaquel y proveedor)
+        // Registrar nuevo producto (guarda en SQL Server)
         async function registrarProducto() {
             const nom = document.getElementById('reg-nombre').value.trim();
             const cat = document.getElementById('reg-categoria').value;
@@ -1009,7 +1019,7 @@
                 }
 
                 if (!respuesta.ok) {
-                    throw new Error("El servidor respondió con error");
+                    throw await errorDeRespuesta(respuesta);
                 }
 
                 triggerToast("Producto añadido al inventario.");
@@ -1028,7 +1038,7 @@
                 showSection('ver');
             } catch (error) {
                 console.error(error);
-                triggerToast("Error al guardar el producto. Revisa que el servidor esté corriendo.");
+                triggerToast(error.message || "Error al guardar el producto. Revisa que el servidor esté corriendo.");
             }
         }
 
@@ -1084,7 +1094,7 @@
                 }
 
                 if (!respuesta.ok) {
-                    throw new Error("El servidor respondió con error");
+                    throw await errorDeRespuesta(respuesta);
                 }
 
                 triggerToast("Propiedades del producto actualizadas.");
@@ -1097,7 +1107,7 @@
                 showSection('ver');
             } catch (error) {
                 console.error(error);
-                triggerToast("Error al actualizar el producto.");
+                triggerToast(error.message || "Error al actualizar el producto.");
             }
         }
 
@@ -1202,7 +1212,7 @@
             actualizarUI();
         }
 
-        // Carga Inicial del Sistema (desde el backend, no desde datos falsos)
+        // Carga inicial del sistema (desde el backend)
         cargarProductosDesdeAPI();
         cargarSelects();
     </script>
@@ -1216,7 +1226,6 @@
             const prod = productos.find(p => p.codigo === valor);
 
             if (campoCodigo.value.toUpperCase().trim() === valor) {
-                // Mismo producto otra vez: suma una unidad
                 campoCantidad.value = (parseInt(campoCantidad.value, 10) || 0) + 1;
             } else {
                 campoCodigo.value = valor;
@@ -1243,7 +1252,6 @@
             } else if (idActiva === 'sec-actualizar') {
                 const form = document.getElementById('edit-form');
                 if (form && !form.classList.contains('hidden')) {
-                    // Ya hay un producto abierto: el código se asigna a ese producto
                     document.getElementById('upd-codigo').value = valor;
                     triggerToast("Código recibido del celular: " + valor);
                 } else {

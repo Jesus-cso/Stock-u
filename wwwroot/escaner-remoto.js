@@ -5,23 +5,69 @@
 
    Uso en una página:
      1) Define   window.alEscanearRemoto = function (codigo) { ... }
-     2) Incluye  <script src="escaner-remoto.js"></script>
+     2) Incluye  <script src="sesion.js"></script>
+                 <script src="escaner-remoto.js"></script>
+        (sesion.js debe cargarse ANTES)
+
+   Requiere haber iniciado sesión: /escaneos y /conectar-celular
+   se consultan con el token JWT en el header Authorization.
    ============================================================ */
 (function () {
     "use strict";
 
-    const BASE = "http://localhost:3000";
+    // Misma dirección de API que usa el resto de la aplicación (sesion.js la
+    // deja en window.STOCK_API). Si no existe, se usa el origen de la página.
+    const BASE = window.STOCK_API || location.origin;
     const INTERVALO_MS = 700;
+    const INTERVALO_SIN_SESION_MS = 3000;
+
+    // Claves donde el login pudo guardar el token (respaldo si no existe Sesion).
+    const CLAVES_TOKEN = ["token", "jwt", "accessToken", "authToken", "access_token", "id_token"];
 
     let ultimoId = null;
-    let conectado = null;
+    let conectado = null; // true | false | "sesion"
+
+    // ── Token ──────────────────────────────────
+    function leerAlmacen(almacen) {
+        try {
+            for (const clave of CLAVES_TOKEN) {
+                const valor = almacen.getItem(clave);
+                if (valor) return valor.replace(/^"|"$/g, "").replace(/^Bearer\s+/i, "").trim();
+            }
+            // Respaldo: cualquier valor guardado que contenga un JWT
+            for (let i = 0; i < almacen.length; i++) {
+                const valor = almacen.getItem(almacen.key(i)) || "";
+                const m = valor.match(/eyJ[\w-]+\.[\w-]+\.[\w-]+/);
+                if (m) return m[0];
+            }
+        } catch (e) { /* almacenamiento bloqueado */ }
+        return null;
+    }
+
+    function obtenerToken() {
+        // 1) sesion.js (es lo que usa el resto de la aplicación)
+        try {
+            if (window.Sesion && typeof window.Sesion.token === "function") {
+                const t = window.Sesion.token();
+                if (t) return String(t).replace(/^Bearer\s+/i, "").trim();
+            }
+        } catch (e) { /* sesion.js no cargó */ }
+
+        // 2) Respaldo: buscar directo en el almacenamiento
+        return leerAlmacen(localStorage) || leerAlmacen(sessionStorage);
+    }
+
+    function cabecerasAuth() {
+        const token = obtenerToken();
+        return token ? { "Authorization": "Bearer " + token } : {};
+    }
 
     // ── Indicador flotante (también es el botón "Conectar celular") ──
     const badge = document.createElement("button");
     badge.type = "button";
     badge.title = "Conectar un celular como scanner";
     badge.style.cssText =
-        "position:fixed;left:50%;transform:translateX(-50%);bottom:14px;z-index:99999;background:#0F172A;color:#fff;" +
+        "position:fixed;right:14px;bottom:14px;z-index:99999;background:#0F172A;color:#fff;" +
         "font:12px Arial,sans-serif;padding:6px 12px;border-radius:999px;opacity:.92;border:0;cursor:pointer;" +
         "display:flex;gap:7px;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,.3);transition:opacity .3s";
     const punto = document.createElement("span");
@@ -35,13 +81,17 @@
     let temporizadorTexto = null;
 
     function textoEnReposo() {
-        return conectado ? "📱 Conectar celular" : "Scanner remoto sin conexión";
+        if (conectado === true) return "📱 Conectar celular";
+        if (conectado === "sesion") return "Scanner: inicia sesión";
+        return "Scanner remoto sin conexión";
     }
 
-    function estadoConexion(ok) {
-        if (ok === conectado) return;
-        conectado = ok;
-        punto.style.background = ok ? "#22C55E" : "#EF4444";
+    function estadoConexion(estado) {
+        if (estado === conectado) return;
+        conectado = estado;
+        punto.style.background =
+            estado === true ? "#22C55E" :
+                estado === "sesion" ? "#F59E0B" : "#EF4444";
         texto.textContent = textoEnReposo();
     }
 
@@ -65,27 +115,47 @@
 
     // ── Consulta periódica ─────────────────────
     async function consultar() {
-        try {
-            const res = await fetch(BASE + "/escaneos?desde=" + (ultimoId ?? 0));
-            const data = await res.json();
-            estadoConexion(true);
+        let espera = INTERVALO_MS;
 
-            if (ultimoId === null) {
-                // Primera vez: ignorar lo que ya estaba pendiente antes de abrir la pantalla
-                ultimoId = data.ultimo;
-            } else if (data.ultimo < ultimoId) {
-                // El servidor se reinició y sus ids empezaron de nuevo
-                ultimoId = 0;
+        try {
+            // Sin token ni se consulta: evita inundar el servidor de 401
+            if (!obtenerToken()) {
+                estadoConexion("sesion");
+                espera = INTERVALO_SIN_SESION_MS;
             } else {
-                for (const e of data.escaneos) {
-                    ultimoId = Math.max(ultimoId, e.id);
-                    procesar(e.codigo);
+                const res = await fetch(BASE + "/escaneos?desde=" + (ultimoId ?? 0), {
+                    headers: cabecerasAuth()
+                });
+
+                if (res.status === 401 || res.status === 403) {
+                    // Token vencido, inválido o sin permiso
+                    estadoConexion("sesion");
+                    espera = INTERVALO_SIN_SESION_MS;
+                } else if (!res.ok) {
+                    throw new Error("Error " + res.status);
+                } else {
+                    const data = await res.json();
+                    estadoConexion(true);
+
+                    if (ultimoId === null) {
+                        // Primera vez: ignorar lo que ya estaba pendiente antes de abrir la pantalla
+                        ultimoId = data.ultimo;
+                    } else if (data.ultimo < ultimoId) {
+                        // El servidor se reinició y sus ids empezaron de nuevo
+                        ultimoId = 0;
+                    } else {
+                        for (const e of data.escaneos) {
+                            ultimoId = Math.max(ultimoId, e.id);
+                            procesar(e.codigo);
+                        }
+                    }
                 }
             }
         } catch (e) {
             estadoConexion(false);
         }
-        setTimeout(consultar, INTERVALO_MS);
+
+        setTimeout(consultar, espera);
     }
 
     consultar();
@@ -164,7 +234,10 @@
         // ── Pedir la dirección al servidor ──
         let datos;
         try {
-            const res = await fetch(BASE + "/conectar-celular");
+            const res = await fetch(BASE + "/conectar-celular", { headers: cabecerasAuth() });
+            if (res.status === 401 || res.status === 403) {
+                throw new Error("inicia sesión en la aplicación e inténtalo de nuevo.");
+            }
             datos = await res.json();
             if (!res.ok) throw new Error(datos.error || "Error " + res.status);
             await cargarLibreriaQr();
