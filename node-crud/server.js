@@ -1,4 +1,4 @@
-﻿require("dotenv").config();
+require("dotenv").config();
 
 const path = require("path");
 const crypto = require("crypto");
@@ -11,13 +11,13 @@ process.on("unhandledRejection", (reason) => {
 });
 
 process.on("uncaughtException", (error) => {
-    console.error("EXCEPCIÓN NO CAPTURADA:", error);
+    console.error("EXCEPCION NO CAPTURADA:", error);
     process.exit(1);
 });
 
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
     process.env.JWT_SECRET = crypto.randomBytes(32).toString("hex");
-    console.warn("⚠️ JWT_SECRET no válido: se generó uno temporal.");
+    console.warn("JWT_SECRET no valido: se genero uno temporal.");
 }
 
 const esProduccion = process.env.NODE_ENV === "production";
@@ -28,7 +28,7 @@ const rolesAlmacen = (process.env.ROLES_ALMACEN || "Admin,Almacenista")
     .filter(Boolean);
 
 if (rolesAlmacen.length === 0) {
-    console.error("❌ ROLES_ALMACEN no tiene ningún rol válido.");
+    console.error("ROLES_ALMACEN no tiene ningun rol valido.");
     process.exit(1);
 }
 
@@ -107,7 +107,7 @@ const limitadorAuth = rateLimit({
     max: 20,
     standardHeaders: true,
     legacyHeaders: false,
-    message: { error: "Demasiados intentos, intenta más tarde" }
+    message: { error: "Demasiados intentos, intenta mas tarde" }
 });
 
 app.use("/auth", limitadorAuth, require("./auth"));
@@ -159,19 +159,20 @@ const servidor = app.listen(PORT, () => {
 
 servidor.on("error", (err) => {
     if (err.code === "EADDRINUSE") {
-        console.error(`❌ El puerto ${PORT} ya está en uso.`);
+        console.error(`El puerto ${PORT} ya esta en uso.`);
     } else {
-        console.error("❌ Error al iniciar el servidor:", err);
+        console.error("Error al iniciar el servidor:", err);
     }
     process.exit(1);
 });
 
-["SIGINT", "SIGTERM"].forEach(señal => {
-    process.on(señal, () => {
-        console.log(`\n${señal} recibido, cerrando servidor...`);
+["SIGINT", "SIGTERM"].forEach(signal => {
+    process.on(signal, () => {
+        console.log(`\n${signal} recibido, cerrando servidor...`);
         servidor.close(() => process.exit(0));
     });
 });
 
 if (!process.env.RENDER) {
-    movil.in
+    movil.iniciarHttps(app);
+}
