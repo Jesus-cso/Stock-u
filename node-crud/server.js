@@ -1,5 +1,6 @@
 require("dotenv").config();
 
+const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const express = require("express");
@@ -89,10 +90,31 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use(express.static(path.join(__dirname, "..", "wwwroot")));
+const carpetaWeb = path.join(__dirname, "..", "wwwroot");
+
+// Resolver archivos HTML sin importar mayusculas, minusculas o si falta .html
+app.use((req, res, next) => {
+    if (req.method !== "GET") return next();
+    const rutaLimpia = decodeURIComponent(req.path).replace(/^\/+/, "");
+    if (!rutaLimpia) return next();
+
+    try {
+        const archivos = fs.readdirSync(carpetaWeb);
+        const encontrado = archivos.find(f =>
+            f.toLowerCase() === rutaLimpia.toLowerCase() ||
+            f.toLowerCase() === (rutaLimpia + ".html").toLowerCase()
+        );
+        if (encontrado && encontrado.toLowerCase().endsWith(".html")) {
+            return res.sendFile(path.join(carpetaWeb, encontrado));
+        }
+    } catch (e) {}
+    next();
+});
+
+app.use(express.static(carpetaWeb));
 
 app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "..", "wwwroot", "index.html"));
+    res.sendFile(path.join(carpetaWeb, "index.html"));
 });
 
 app.get("/api/status", (req, res) => {
