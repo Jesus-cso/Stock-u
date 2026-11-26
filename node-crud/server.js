@@ -4,6 +4,7 @@
 
 require("dotenv").config();
 
+const crypto = require("crypto");
 const express = require("express");
 const cors = require("cors");
 const rateLimit = require("express-rate-limit"); // npm i express-rate-limit
@@ -26,20 +27,22 @@ process.on("uncaughtException", (error) => {
 // VALIDAR VARIABLES
 // =====================================
 
+// Si falta JWT_SECRET (o es muy corto) se genera uno temporal.
+// OJO: cambia en cada reinicio y cierra todas las sesiones.
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
-    console.error("❌ JWT_SECRET debe tener mínimo 32 caracteres.");
-    process.exit(1);
+    process.env.JWT_SECRET = crypto.randomBytes(32).toString("hex");
+    console.warn("⚠️ JWT_SECRET no válido: se generó uno temporal.");
 }
 
 const esProduccion = process.env.NODE_ENV === "production";
 
-const rolesAlmacen = (process.env.ROLES_ALMACEN || "")
+const rolesAlmacen = (process.env.ROLES_ALMACEN || "Admin,Almacenista")
     .split(",")
     .map(s => s.trim())
     .filter(Boolean);
 
 if (rolesAlmacen.length === 0) {
-    console.error("❌ ROLES_ALMACEN no está definido en el .env.");
+    console.error("❌ ROLES_ALMACEN no tiene ningún rol válido.");
     process.exit(1);
 }
 
@@ -56,8 +59,6 @@ const soloAlmacen = verificarToken(rolesAlmacen); // personal de almacén
 //  - la PC (pantallas de escritorio): entra con su JWT (Authorization: Bearer ...)
 //  - el celular (movil.html / app Expo): no tiene sesión, entra con la clave
 //    del scanner en el header "x-escaner-token" (= ESCANER_TOKEN del .env)
-const crypto = require("crypto");
-
 function claveEscanerValida(req) {
     const esperada = process.env.ESCANER_TOKEN || "";
     const recibida = req.get("x-escaner-token") || "";
@@ -78,6 +79,12 @@ function jwtOClaveEscaner(req, res, next) {
 
 const app = express();
 
+// Render pone un proxy delante: necesario para que el límite de intentos
+// distinga la IP de cada cliente
+if (process.env.RENDER) {
+    app.set("trust proxy", 1);
+}
+
 // =====================================
 // CORS
 // =====================================
@@ -86,11 +93,12 @@ const origenesPermitidos = [
     "https://stockupt.app",
     "http://localhost:3000",
     "https://localhost:3443",
+    process.env.RENDER_EXTERNAL_URL, // Render la define automáticamente
     ...(process.env.CORS_ORIGINS || "")
         .split(",")
         .map(s => s.trim())
-        .filter(Boolean)
-];
+]
+    .filter(Boolean);
 
 // En desarrollo se aceptan origenes de la red local (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
 // para que el escáner móvil funcione sin tocar el .env cada vez que cambie la IP.
@@ -249,4 +257,7 @@ servidor.on("error", (err) => {
 // HTTPS LOCAL PARA ESCÁNER
 // =====================================
 
-movil.iniciarHttps(app);
+// En Render el HTTPS ya lo pone la plataforma
+if (!process.env.RENDER) {
+    movil.iniciarHttps(app);
+}
