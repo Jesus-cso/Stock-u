@@ -207,19 +207,20 @@
             font-style: italic;
         }
     </style>
+    <link rel="icon" href="data:,">
 </head>
 <body>
 
     <nav>
         <h2>Registrar Empleado</h2>
         <form id="empleado-form">
+            <a href="Dashbord.html" title="Volver al menú">
+                ⬅
+            </a>
             <div class="form-group">
                 <label for="numControl">Número de Control / Matrícula</label>
                 <input type="text" id="numControl" placeholder="Ej. EMP-1024" required>
             </div>
-            <a href="Dashbord.html" title="Volver al menú">
-                ⬅
-            </a>
 
             <div class="form-group">
                 <label for="nombre">Nombre Completo</label>
@@ -245,28 +246,26 @@
         <div class="area">
             <h2>Plantilla de Personal Activo</h2>
             <p>Base de datos general de los miembros registrados en el sistema.</p>
-            <div class="sidebar-logout">
-                <a asp-action="Logout" asp-controller="Account" href="Dashbord.html" title="Cerrar sesión">
-                    ⬅
-                </a>
-                <div class="table-container">
-                    <table id="tabla-empleados">
-                        <thead>
-                            <tr>
-                                <th>No. Control</th>
-                                <th>Nombre Completo</th>
-                                <th>Área</th>
-                                <th>Teléfono</th>
-                                <th>Estado</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody id="tbody-empleados"></tbody>
-                    </table>
-                </div>
+
+            <div class="table-container">
+                <table id="tabla-empleados">
+                    <thead>
+                        <tr>
+                            <th>No. Control</th>
+                            <th>Nombre Completo</th>
+                            <th>Área</th>
+                            <th>Teléfono</th>
+                            <th>Estado</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-empleados"></tbody>
+                </table>
             </div>
         </div>
+    </div>
 
+    <script src="sesion.js"></script>
     <script>
         const API_URL = "http://localhost:3000";
 

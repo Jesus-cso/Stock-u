@@ -1,12 +1,15 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="utf-8" />
-    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>Inventario</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | StockUPT</title>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet">
+
     <style>
         * {
             margin: 0;
@@ -15,30 +18,28 @@
         }
 
         :root {
-            /* PALETA DE ALTO CONTRASTE */
-            --bg-page: #0F172A; /* Azul noche profundo */
-            --bg-surface: #1E293B; /* Card / Sidebar */
-            --bg-card-hover: #334155; /* Estado hover claro */
-            --primary: #2563EB; /* Azul primario vibrante */
+            --bg-page: #0F172A;
+            --bg-surface: #1E293B;
+            --bg-card-hover: #334155;
+            --primary: #2563EB;
             --primary-hover: #1D4ED8;
-            --text-heading: #FFFFFF; /* Máximo contraste para títulos */
-            --text-body: #F8FAFC; /* Texto principal blanco suave */
-            --text-muted: #94A3B8; /* Texto secundario de alta legibilidad */
-            --border-color: #334155; /* Bordes bien marcados */
+            --text-heading: #FFFFFF;
+            --text-body: #F8FAFC;
+            --text-muted: #94A3B8;
+            --border-color: #334155;
             --focus-ring: #60A5FA;
         }
 
         body {
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            font-family: 'Inter', system-ui, sans-serif;
             background-color: var(--bg-page);
             color: var(--text-body);
             display: flex;
             min-height: 100vh;
         }
 
-        /* =======================
-           SIDEBAR
-        ======================= */
+        /* SIDEBAR */
+
         .sidebar {
             width: 280px;
             background: var(--bg-surface);
@@ -109,9 +110,8 @@
                     border-color: var(--primary);
                 }
 
-        /* =======================
-           CONTENIDO CENTRAL
-        ======================= */
+        /* CONTENIDO */
+
         .main-content {
             flex: 1;
             display: flex;
@@ -143,9 +143,8 @@
                 font-weight: 500;
             }
 
-        /* =======================
-           GRID DE MENÚ
-        ======================= */
+        /* TARJETAS */
+
         .menu-principal {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -159,7 +158,7 @@
             padding: 32px 24px;
             border-radius: 16px;
             border: 2px solid var(--border-color);
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.25s ease;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -203,6 +202,7 @@
         }
 
         /* RESPONSIVE */
+
         @media(max-width: 850px) {
             body {
                 flex-direction: column;
@@ -234,70 +234,155 @@
         }
     </style>
 </head>
+
 <body>
 
+    <script src="sesion.js"></script>
+
     <aside class="sidebar">
+
         <div class="sidebar-logout">
-            <a asp-action="Logout" asp-controller="Account" href="Dashbord.html" class="btn-back" title="Cerrar sesión">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            <a href="#" id="cerrarSesion" class="btn-back" title="Cerrar sesión">
+                <svg width="22" height="22" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" stroke-width="2.5"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
             </a>
         </div>
+
         <nav>
-            <a asp-action="Index" asp-controller="Alertas" href="alertas.html">Alertas</a>
-            <a asp-action="Index" asp-controller="Miembros" href="trabajadores.html">Miembros</a>
-            <a asp-action="Index" asp-controller="Historial" href="historial.html">Historial</a>
-            <a asp-action="Index" asp-controller="Reportes" href="ver_reprtes.html">Ver Reportes</a>
-            <a asp-action="Index" asp-controller="Productos" href="control_productos.html">Control de productos</a>
+            <a href="alertas.html">Alertas</a>
+            <a href="trabajadores.html">Miembros</a>
+            <a href="historial.html">Historial</a>
+            <a href="ver_reprtes.html">Ver Reportes</a>
+            <a href="control_productos.html">Control de productos</a>
         </nav>
+
     </aside>
 
     <main class="main-content">
+
         <div class="page-body">
+
             <div class="dashboard-header">
                 <h1>Módulos de Inventario</h1>
-                <p>Selecciona una opción para gestionar tu sistema</p>3
+                <p>Selecciona una opción para gestionar tu sistema</p>
             </div>
 
             <div class="menu-principal">
 
-                <a asp-action="Index" asp-controller="Materiales" class="card-menu" href="control_productos.html">
+                <!-- MATERIALES -->
+
+                <a class="card-menu" href="control_productos.html">
                     <div class="card-icon-wrapper">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                        <svg width="32" height="32" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                        </svg>
                     </div>
-                    <span>Materiales y<br />mobiliario</span>
+                    <span>Materiales y<br>mobiliario</span>
                 </a>
 
-                <a asp-action="Index" asp-controller="Notas" class="card-menu" href="ver_reprtes.html">
+                <!-- NOTAS DE ENTRADA Y SALIDA -->
+
+                <a class="card-menu" href="ver_reprtes.html">
                     <div class="card-icon-wrapper">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+                        <svg width="32" height="32" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="12" y1="18" x2="12" y2="12"></line>
+                            <line x1="9" y1="15" x2="15" y2="15"></line>
+                        </svg>
                     </div>
-                    <span>Nota de entrada<br />y salida</span>
+                    <span>Nota de entrada<br>y salida</span>
                 </a>
 
-                <a asp-action="Index" asp-controller="Areas" class="card-menu" href="anaqueles.html">
+                <!-- CAJA Y ESCANER -->
+
+                <a class="card-menu" href="caja.html">
                     <div class="card-icon-wrapper">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="12" y1="9" x2="12" y2="21"></line></svg>
+                        <svg width="32" height="32" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 5v14"></path>
+                            <path d="M7 5v14"></path>
+                            <path d="M11 5v14"></path>
+                            <path d="M15 5v14"></path>
+                            <path d="M19 5v14"></path>
+                            <path d="M21 5v14"></path>
+                        </svg>
                     </div>
-                    <span>Áreas o<br />Anaqueles</span>
+                    <span>Caja<br>(escáner)</span>
                 </a>
 
-                <a asp-action="Index" asp-controller="Proveedores" class="card-menu" href="provedores.html">
+                <!-- AREAS Y ANAQUELES -->
+
+                <a class="card-menu" href="anaqueles.html">
                     <div class="card-icon-wrapper">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"></path><path d="M16 8h4l3 3v5h-7V8z"></path><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+                        <svg width="32" height="32" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                            <line x1="3" y1="9" x2="21" y2="9"></line>
+                            <line x1="3" y1="15" x2="21" y2="15"></line>
+                            <line x1="12" y1="9" x2="12" y2="21"></line>
+                        </svg>
+                    </div>
+                    <span>Áreas o<br>Anaqueles</span>
+                </a>
+
+                <!-- PROVEEDORES -->
+
+                <a class="card-menu" href="provedores.html">
+                    <div class="card-icon-wrapper">
+                        <svg width="32" height="32" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 3h15v13H1z"></path>
+                            <path d="M16 8h4l3 3v5h-7V8z"></path>
+                            <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                            <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                        </svg>
                     </div>
                     <span>Proveedores</span>
                 </a>
 
-                <a asp-action="Index" asp-controller="Miembros" class="card-menu" href="trabajadores.html">
+                <!-- MIEMBROS -->
+
+                <a class="card-menu" href="trabajadores.html">
                     <div class="card-icon-wrapper">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        <svg width="32" height="32" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
                     </div>
-                    <span>Miembros /<br />Empleados</span>
+                    <span>Miembros /<br>Empleados</span>
                 </a>
 
             </div>
         </div>
+
     </main>
+
+    <script>document.getElementById("cerrarSesion").addEventListener("click", function (e) {
+            e.preventDefault();
+
+            if (confirm("¿Estás seguro de que deseas cerrar sesión?")) {
+                window.Sesion.logout();
+            }
+        });</script>
 
 </body>
 </html>
+<a href="Dashbord.html">Dashbord.html</a>

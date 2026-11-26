@@ -742,6 +742,7 @@
             }
         }
     </style>
+    <link rel="icon" href="data:,">
 </head>
 <body>
 
@@ -875,6 +876,7 @@
     <!-- TOAST CONTAINER -->
     <div class="toast-container" id="toastContainer"></div>
 
+    <script src="sesion.js"></script>
     <script>
         // ═══════════════════════════════════════════════════════
         // CONFIGURACIÓN
@@ -915,12 +917,12 @@
             if (tipo === "warning") icono = "fa-info-circle";
 
             toast.innerHTML = `
-                        <i class="fas ${icono}"></i>
-                        <span class="toast-message">${mensaje}</span>
-                        <button class="toast-close">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    `;
+                            <i class="fas ${icono}"></i>
+                            <span class="toast-message">${mensaje}</span>
+                            <button class="toast-close">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        `;
 
             DOM.toastContainer.appendChild(toast);
             toast.querySelector(".toast-close").addEventListener("click", () => {
@@ -953,32 +955,32 @@
             fila.dataset.id = proveedor.id_proveedor;
 
             fila.innerHTML = `
-                        <td class="col-empresa">${proveedor.nombre}</td>
-                        <td>${proveedor.contacto || "—"}</td>
-                        <td>${proveedor.telefono || "—"}</td>
-                        <td>${proveedor.correo || "—"}</td>
-                        <td>${proveedor.direccion || "—"}</td>
-                        <td>
-                            <span class="col-estado">
-                                <span class="badge badge-success">
-                                    <i class="fas fa-circle" style="font-size: 6px;"></i>
-                                    Activo
+                            <td class="col-empresa">${proveedor.nombre}</td>
+                            <td>${proveedor.contacto || "—"}</td>
+                            <td>${proveedor.telefono || "—"}</td>
+                            <td>${proveedor.correo || "—"}</td>
+                            <td>${proveedor.direccion || "—"}</td>
+                            <td>
+                                <span class="col-estado">
+                                    <span class="badge badge-success">
+                                        <i class="fas fa-circle" style="font-size: 6px;"></i>
+                                        Activo
+                                    </span>
                                 </span>
-                            </span>
-                        </td>
-                        <td>
-                            <div class="table-actions">
-                                <button class="btn-action btn-edit" title="Editar">
-                                    <i class="fas fa-edit"></i>
-                                    Editar
-                                </button>
-                                <button class="btn-action btn-delete" title="Eliminar">
-                                    <i class="fas fa-trash"></i>
-                                    Eliminar
-                                </button>
-                            </div>
-                        </td>
-                    `;
+                            </td>
+                            <td>
+                                <div class="table-actions">
+                                    <button class="btn-action btn-edit" title="Editar">
+                                        <i class="fas fa-edit"></i>
+                                        Editar
+                                    </button>
+                                    <button class="btn-action btn-delete" title="Eliminar">
+                                        <i class="fas fa-trash"></i>
+                                        Eliminar
+                                    </button>
+                                </div>
+                            </td>
+                        `;
 
             return fila;
         }
@@ -998,14 +1000,14 @@
                 console.error("Error:", error);
                 mostrarToast("Error al cargar los proveedores", "error");
                 DOM.tablaBody.innerHTML = `
-                            <tr>
-                                <td colspan="7" class="empty-state">
-                                    <i class="fas fa-exclamation-triangle"></i>
-                                    <h3>Error al cargar</h3>
-                                    <p>No se pudieron cargar los proveedores. Intenta más tarde.</p>
-                                </td>
-                            </tr>
-                        `;
+                                <tr>
+                                    <td colspan="7" class="empty-state">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        <h3>Error al cargar</h3>
+                                        <p>No se pudieron cargar los proveedores. Intenta más tarde.</p>
+                                    </td>
+                                </tr>
+                            `;
             }
         }
 
@@ -1076,16 +1078,16 @@
 
             if (proveedores.length === 0) {
                 DOM.tablaBody.innerHTML = `
-                            <tr>
-                                <td colspan="7">
-                                    <div class="empty-state">
-                                        <i class="fas fa-inbox"></i>
-                                        <h3>Sin proveedores</h3>
-                                        <p>No hay proveedores registrados aún. ¡Crea el primero!</p>
-                                    </div>
-                                </td>
-                            </tr>
-                        `;
+                                <tr>
+                                    <td colspan="7">
+                                        <div class="empty-state">
+                                            <i class="fas fa-inbox"></i>
+                                            <h3>Sin proveedores</h3>
+                                            <p>No hay proveedores registrados aún. ¡Crea el primero!</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `;
                 return;
             }
 

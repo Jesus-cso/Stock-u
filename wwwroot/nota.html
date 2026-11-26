@@ -1066,6 +1066,54 @@
         const API_PRODUCTOS = `${API_BASE}/productos`;
         const API_PROYECTOS = `${API_BASE}/proyectos`;
 
+        // =====================================
+        // AUTENTICACIÓN JWT
+        // =====================================
+        // El login de la API devuelve el JWT en la propiedad "token".
+        // Se comprueba localStorage y sessionStorage para tolerar ambas formas
+        // de persistencia. Si tu login usa otra clave, agrégala aquí.
+        function obtenerToken() {
+            return (
+                localStorage.getItem("token") ||
+                sessionStorage.getItem("token") ||
+                localStorage.getItem("accessToken") ||
+                sessionStorage.getItem("accessToken") ||
+                localStorage.getItem("jwt") ||
+                sessionStorage.getItem("jwt") ||
+                ""
+            ).trim();
+        }
+
+        async function fetchAutenticado(url, opciones = {}) {
+            const token = obtenerToken();
+
+            if (!token) {
+                throw new Error("No se encontró el token de sesión. Cierra sesión e inicia sesión nuevamente.");
+            }
+
+            const headers = new Headers(opciones.headers || {});
+            headers.set("Authorization", `Bearer ${token}`);
+
+            const respuesta = await fetch(url, {
+                ...opciones,
+                headers
+            });
+
+            if (respuesta.status === 401) {
+                throw new Error("Tu sesión no es válida o expiró. Inicia sesión nuevamente.");
+            }
+
+            if (respuesta.status === 403) {
+                throw new Error("Tu usuario no tiene permisos para acceder a esta sección.");
+            }
+
+            return respuesta;
+        }
+
+        async function leerJson(respuesta) {
+            return await respuesta.json().catch(() => ({}));
+        }
+
         const ID_MIEMBRO_ALMACEN = 15;
         const NOMBRE_RECEPTOR_ALMACEN = "Julio César Monrroy Guzmán";
         const FUENTE_FINANCIAMIENTO_FIJA = "PUA"; // ► MODIFICADO: Cambiado de OUA a PUA
@@ -1171,10 +1219,10 @@
             if (tipo === "warning") icono = "fa-info-circle";
 
             toast.innerHTML = `
-                        <i class="fas ${icono}"></i>
-                        <span class="toast-message">${mensajeHtml}</span>
-                        <button class="toast-close"><i class="fas fa-times"></i></button>
-                    `;
+                            <i class="fas ${icono}"></i>
+                            <span class="toast-message">${mensajeHtml}</span>
+                            <button class="toast-close"><i class="fas fa-times"></i></button>
+                        `;
 
             DOM.toastContainer.appendChild(toast);
             const cerrar = () => { toast.remove(); };
@@ -1185,13 +1233,21 @@
 
         async function cargarProveedores() {
             try {
-                const res = await fetch(API_PROVEEDORES);
-                const data = await res.json();
+                const res = await fetchAutenticado(API_PROVEEDORES);
+                const data = await leerJson(res);
+
+                if (!res.ok) {
+                    throw new Error(data.error || "No se pudieron cargar los proveedores.");
+                }
+                if (!Array.isArray(data)) {
+                    throw new Error(data.error || "La API no devolvió una lista de proveedores.");
+                }
+
                 DOM.selProveedor.innerHTML = '<option value="">Selecciona un proveedor…</option>' +
-                    data.map(p => `<option value="${p.id_proveedor}">${p.nombre}</option>`).join("");
+                    data.map(p => `<option value="${p.id_proveedor}">${p.nombre ?? "Proveedor sin nombre"}</option>`).join("");
             } catch (error) {
                 console.error("Error cargando proveedores:", error);
-                mostrarToast("No se pudieron cargar los proveedores", "error");
+                mostrarToast(error.message || "No se pudieron cargar los proveedores", "error");
             }
         }
 
@@ -1203,14 +1259,22 @@
 
         async function cargarProductos() {
             try {
-                const res = await fetch(API_PRODUCTOS);
-                const data = await res.json();
+                const res = await fetchAutenticado(API_PRODUCTOS);
+                const data = await leerJson(res);
+
+                if (!res.ok) {
+                    throw new Error(data.error || "No se pudieron cargar los productos.");
+                }
+                if (!Array.isArray(data)) {
+                    throw new Error(data.error || "La API no devolvió una lista de productos.");
+                }
+
                 productosDisponibles = data;
                 DOM.selProducto.innerHTML = '<option value="">Selecciona un producto…</option>' +
-                    data.map(p => `<option value="${p.id_producto}">${p.nombre}</option>`).join("");
+                    data.map(p => `<option value="${p.id_producto}">${p.nombre ?? "Producto sin nombre"}</option>`).join("");
             } catch (error) {
                 console.error("Error cargando productos:", error);
-                mostrarToast("No se pudieron cargar los productos", "error");
+                mostrarToast(error.message || "No se pudieron cargar los productos", "error");
             }
         }
 
@@ -1238,10 +1302,14 @@
             if (proyectoEncontrado && String(proyectoEncontrado.numero) === numero) return;
 
             try {
-                const res = await fetch(`${API_PROYECTOS}/numero/${encodeURIComponent(numero)}`);
-                const data = await res.json().catch(() => ({}));
+                const res = await fetchAutenticado(`${API_PROYECTOS}/numero/${encodeURIComponent(numero)}`);
+                const data = await leerJson(res);
 
-                if (!res.ok || !data.encontrado) {
+                if (!res.ok) {
+                    throw new Error(data.error || "No se pudo consultar el proyecto.");
+                }
+
+                if (!data.encontrado || !data.proyecto) {
                     limpiarProyecto();
                     ayudaProyecto(`No existe el proyecto ${numero}.`, "error");
                     return;
@@ -1256,7 +1324,7 @@
             } catch (error) {
                 console.error("Error buscando proyecto:", error);
                 limpiarProyecto();
-                ayudaProyecto("No se pudo consultar el proyecto.", "error");
+                ayudaProyecto(error.message || "No se pudo consultar el proyecto.", "error");
             }
         }
 
@@ -1277,18 +1345,27 @@
 
         async function cargarNotas() {
             try {
-                const res = await fetch(API_NOTAS);
-                if (!res.ok) throw new Error("Error al cargar notas");
-                todasLasNotas = await res.json();
+                const res = await fetchAutenticado(API_NOTAS);
+                const data = await leerJson(res);
+
+                if (!res.ok) {
+                    throw new Error(data.error || "No se pudieron cargar las notas de entrada.");
+                }
+                if (!Array.isArray(data)) {
+                    throw new Error(data.error || "La API no devolvió una lista de notas.");
+                }
+
+                todasLasNotas = data;
                 actualizarTabla(todasLasNotas);
             } catch (error) {
-                console.error("Error:", error);
+                console.error("Error cargando notas:", error);
                 DOM.tablaBody.innerHTML = `
-                            <tr><td colspan="6" class="empty-state">
-                                <i class="fas fa-exclamation-triangle"></i>
-                                <h3>Error al cargar</h3>
-                                <p>No se pudieron cargar las notas de entrada.</p>
-                            </td></tr>`;
+                        <tr><td colspan="6"><div class="empty-state">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <h3>Error al cargar</h3>
+                            <p>${error.message || "No se pudieron cargar las notas de entrada."}</p>
+                        </div></td></tr>`;
+                mostrarToast(error.message || "No se pudieron cargar las notas", "error");
             }
         }
 
@@ -1299,30 +1376,30 @@
 
             if (notas.length === 0) {
                 DOM.tablaBody.innerHTML = `
-                            <tr><td colspan="6"><div class="empty-state">
-                                <i class="fas fa-inbox"></i>
-                                <h3>Sin notas de entrada</h3>
-                                <p>Aún no se ha registrado ninguna entrada de mercancía.</p>
-                            </div></td></tr>`;
+                                <tr><td colspan="6"><div class="empty-state">
+                                    <i class="fas fa-inbox"></i>
+                                    <h3>Sin notas de entrada</h3>
+                                    <p>Aún no se ha registrado ninguna entrada de mercancía.</p>
+                                </div></td></tr>`;
                 return;
             }
 
             notas.forEach(nota => {
                 const fila = document.createElement("tr");
                 fila.innerHTML = `
-                            <td class="col-folio">${nota.folio}</td>
-                            <td>${new Date(nota.fecha).toLocaleDateString("es-MX")}</td>
-                            <td class="col-empresa">${nota.proveedor || "—"}</td>
-                            <td>${NOMBRE_RECEPTOR_ALMACEN}</td>
-                            <td>$${Number(nota.total || 0).toFixed(2)}</td>
-                            <td>
-                                <div class="table-actions">
-                                    <button class="btn-action btn-edit" data-id="${nota.id_nota}">
-                                        <i class="fas fa-eye"></i> Ver
-                                    </button>
-                                </div>
-                            </td>
-                        `;
+                                <td class="col-folio">${nota.folio}</td>
+                                <td>${new Date(nota.fecha).toLocaleDateString("es-MX")}</td>
+                                <td class="col-empresa">${nota.proveedor || "—"}</td>
+                                <td>${NOMBRE_RECEPTOR_ALMACEN}</td>
+                                <td>$${Number(nota.total || 0).toFixed(2)}</td>
+                                <td>
+                                    <div class="table-actions">
+                                        <button class="btn-action btn-edit" data-id="${nota.id_nota}">
+                                            <i class="fas fa-eye"></i> Ver
+                                        </button>
+                                    </div>
+                                </td>
+                            `;
                 DOM.tablaBody.appendChild(fila);
             });
 
@@ -1336,9 +1413,9 @@
 
         async function verDetalle(id) {
             try {
-                const res = await fetch(`${API_NOTAS}/${id}`);
-                if (!res.ok) throw new Error("No encontrada");
-                const nota = await res.json();
+                const res = await fetchAutenticado(`${API_NOTAS}/${encodeURIComponent(id)}`);
+                const nota = await leerJson(res);
+                if (!res.ok) throw new Error(nota.error || "No se encontró la nota.");
 
                 notaActualParaImprimir = nota;
                 const ex = leerExtras(nota);
@@ -1357,19 +1434,20 @@
                 DOM.detalleProductosBody.innerHTML = productosDetalle.map(p => {
                     total += Number(p.total_renglon);
                     return `
-                                <tr>
-                                    <td>${p.producto}</td>
-                                    <td>${p.cantidad}</td>
-                                    <td>$${Number(p.precio_unitario).toFixed(2)}</td>
-                                    <td>$${Number(p.total_renglon).toFixed(2)}</td>
-                                </tr>
-                            `;
+                                    <tr>
+                                        <td>${p.producto}</td>
+                                        <td>${p.cantidad}</td>
+                                        <td>$${Number(p.precio_unitario).toFixed(2)}</td>
+                                        <td>$${Number(p.total_renglon).toFixed(2)}</td>
+                                    </tr>
+                                `;
                 }).join("");
                 DOM.detalleTotal.textContent = total.toFixed(2);
 
                 DOM.modalDetalle.classList.add("active");
             } catch (error) {
-                mostrarToast("No se pudo cargar el detalle de la nota", "error");
+                console.error("Error cargando detalle de nota:", error);
+                mostrarToast(error.message || "No se pudo cargar el detalle de la nota", "error");
             }
         }
 
@@ -1394,23 +1472,23 @@
 
             const FILAS_MINIMAS = 30;
             const filasProd = productosImpresion.map((p, i) => `
-                        <tr>
-                            <td class="c">${i + 1}</td>
-                            <td class="c">${esc(p.cantidad)}</td>
-                            <td class="c">${esc((p.unidad || "").toString().toUpperCase())}</td>
-                            <td class="desc">${esc(p.producto)}</td>
-                            <td class="money"><span>$</span><span>${dinero(p.precio_unitario)}</span></td>
-                            <td class="money"><span>$</span><span>${dinero(p.total_renglon)}</span></td>
-                        </tr>`).join("");
+                            <tr>
+                                <td class="c">${i + 1}</td>
+                                <td class="c">${esc(p.cantidad)}</td>
+                                <td class="c">${esc((p.unidad || "").toString().toUpperCase())}</td>
+                                <td class="desc">${esc(p.producto)}</td>
+                                <td class="money"><span>$</span><span>${dinero(p.precio_unitario)}</span></td>
+                                <td class="money"><span>$</span><span>${dinero(p.total_renglon)}</span></td>
+                            </tr>`).join("");
 
             let filasVacias = "";
             for (let i = productosImpresion.length; i < FILAS_MINIMAS; i++) {
                 filasVacias += `
-                            <tr>
-                                <td class="c">&nbsp;</td><td></td><td></td><td></td>
-                                <td class="money"><span>$</span><span>-</span></td>
-                                <td class="money"><span>$</span><span>-</span></td>
-                            </tr>`;
+                                <tr>
+                                    <td class="c">&nbsp;</td><td></td><td></td><td></td>
+                                    <td class="money"><span>$</span><span>-</span></td>
+                                    <td class="money"><span>$</span><span>-</span></td>
+                                </tr>`;
             }
 
             const logoUrl = new URL("img/logoupt.png", window.location.href).href;
@@ -1422,145 +1500,145 @@
 <meta charset="utf-8">
 <title>Nota de Entrada ${esc(nota.folio)}</title>
 <style>
-            @page { size: letter portrait; margin: 0; }
-            * { box-sizing: border-box; margin: 0; padding: 0; }
-            body { font-family: Arial, Helvetica, sans-serif; color: #000; font-size: 10px; background: #fff; }
-            .hoja { width: 100%; max-width: 195mm; margin: 0 auto; }
-            table { width: 100%; border-collapse: collapse; }
-            td, th { border: 1px solid #000; padding: 2px 4px; vertical-align: top; }
-            .lbl { font-size: 6.5px; text-transform: uppercase; color: #444; display: block; margin-bottom: 1px; }
-            .val { font-size: 9px; font-weight: bold; display: block; min-height: 11px; }
-            .centro { text-align: center; }
-            .enc td { border: none; padding: 0; }
-            .logo-box { width: 17%; }
-            .logo-box.der { text-align: right; }
-            .logo-box img { max-height: 48px; max-width: 100%; }
-            .titulo-inst { text-align: center; font-weight: bold; font-size: 11px; line-height: 1.3; }
-            .titulo-inst .sub { font-size: 8.5px; }
-            .fecha-folio { width: 27%; }
-            .fecha-folio table td { font-size: 9px; }
-            .datos td { height: 26px; }
-            .nombre-doc { width: 26%; font-size: 15px; font-style: italic; font-weight: bold; vertical-align: middle; }
-            .items { margin-top: 0; }
-            .items th { font-size: 6.5px; text-transform: uppercase; text-align: center; font-weight: normal; background: #f2f2f2; padding: 2px; }
-            .items td { height: 15px; font-size: 9px; padding: 1px 4px; }
-            .items td.c { text-align: center; }
-            .items td.desc { text-align: left; }
-            .items td.money { white-space: nowrap; display: table-cell; }
-            .items td.money span:first-child { float: left; }
-            .items td.money span:last-child { float: right; }
-            .items col.c-item { width: 6%; }
-            .items col.c-cant { width: 9%; }
-            .items col.c-uni  { width: 11%; }
-            .items col.c-desc { width: 44%; }
-            .items col.c-cu   { width: 15%; }
-            .items col.c-imp  { width: 15%; }
-            .totales-wrap { width: 100%; }
-            .totales { width: 46%; margin-left: auto; }
-            .totales td { font-size: 10px; height: 17px; }
-            .totales td.et { text-align: center; width: 50%; }
-            .totales td.mn { white-space: nowrap; }
-            .totales td.mn span:first-child { float: left; }
-            .totales td.mn span:last-child { float: right; }
-            .pie { margin-top: 6px; }
-            .pie td { height: 30px; }
-            .firma { height: 48px; }
-            .rev { margin-top: 10px; font-size: 7.5px; color: #333; line-height: 1.5; }
-            [contenteditable] { outline: none; }
-            @media screen {
-                [contenteditable] { background: #fff8c5; cursor: text; }
-                body { background: #e5e7eb; padding: 14px; }
-                .hoja { background: #fff; padding: 10mm; box-shadow: 0 2px 10px rgba(0,0,0,.25); }
-                .barra { position: sticky; top: 0; z-index: 5; max-width: 195mm; margin: 0 auto 10px; display: flex; gap: 10px; align-items: center; background: #1E3A8A; color: #fff; padding: 8px 12px; font-size: 12px; border-radius: 6px; }
-                .barra button { background: #fff; color: #1E3A8A; border: 0; padding: 6px 14px; border-radius: 4px; font-weight: bold; cursor: pointer; }
-            }
-            @media print {
-                .barra { display: none !important; }
-                [contenteditable] { background: none !important; }
-                .hoja { max-width: 100%; padding: 10mm; }
-            }
+                @page { size: letter portrait; margin: 0; }
+                * { box-sizing: border-box; margin: 0; padding: 0; }
+                body { font-family: Arial, Helvetica, sans-serif; color: #000; font-size: 10px; background: #fff; }
+                .hoja { width: 100%; max-width: 195mm; margin: 0 auto; }
+                table { width: 100%; border-collapse: collapse; }
+                td, th { border: 1px solid #000; padding: 2px 4px; vertical-align: top; }
+                .lbl { font-size: 6.5px; text-transform: uppercase; color: #444; display: block; margin-bottom: 1px; }
+                .val { font-size: 9px; font-weight: bold; display: block; min-height: 11px; }
+                .centro { text-align: center; }
+                .enc td { border: none; padding: 0; }
+                .logo-box { width: 17%; }
+                .logo-box.der { text-align: right; }
+                .logo-box img { max-height: 48px; max-width: 100%; }
+                .titulo-inst { text-align: center; font-weight: bold; font-size: 11px; line-height: 1.3; }
+                .titulo-inst .sub { font-size: 8.5px; }
+                .fecha-folio { width: 27%; }
+                .fecha-folio table td { font-size: 9px; }
+                .datos td { height: 26px; }
+                .nombre-doc { width: 26%; font-size: 15px; font-style: italic; font-weight: bold; vertical-align: middle; }
+                .items { margin-top: 0; }
+                .items th { font-size: 6.5px; text-transform: uppercase; text-align: center; font-weight: normal; background: #f2f2f2; padding: 2px; }
+                .items td { height: 15px; font-size: 9px; padding: 1px 4px; }
+                .items td.c { text-align: center; }
+                .items td.desc { text-align: left; }
+                .items td.money { white-space: nowrap; display: table-cell; }
+                .items td.money span:first-child { float: left; }
+                .items td.money span:last-child { float: right; }
+                .items col.c-item { width: 6%; }
+                .items col.c-cant { width: 9%; }
+                .items col.c-uni  { width: 11%; }
+                .items col.c-desc { width: 44%; }
+                .items col.c-cu   { width: 15%; }
+                .items col.c-imp  { width: 15%; }
+                .totales-wrap { width: 100%; }
+                .totales { width: 46%; margin-left: auto; }
+                .totales td { font-size: 10px; height: 17px; }
+                .totales td.et { text-align: center; width: 50%; }
+                .totales td.mn { white-space: nowrap; }
+                .totales td.mn span:first-child { float: left; }
+                .totales td.mn span:last-child { float: right; }
+                .pie { margin-top: 6px; }
+                .pie td { height: 30px; }
+                .firma { height: 48px; }
+                .rev { margin-top: 10px; font-size: 7.5px; color: #333; line-height: 1.5; }
+                [contenteditable] { outline: none; }
+                @media screen {
+                    [contenteditable] { background: #fff8c5; cursor: text; }
+                    body { background: #e5e7eb; padding: 14px; }
+                    .hoja { background: #fff; padding: 10mm; box-shadow: 0 2px 10px rgba(0,0,0,.25); }
+                    .barra { position: sticky; top: 0; z-index: 5; max-width: 195mm; margin: 0 auto 10px; display: flex; gap: 10px; align-items: center; background: #1E3A8A; color: #fff; padding: 8px 12px; font-size: 12px; border-radius: 6px; }
+                    .barra button { background: #fff; color: #1E3A8A; border: 0; padding: 6px 14px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+                }
+                @media print {
+                    .barra { display: none !important; }
+                    [contenteditable] { background: none !important; }
+                    .hoja { max-width: 100%; padding: 10mm; }
+                }
 </style>
 </head>
 <body>
 <div class="barra">
-            <button onclick="window.print()">🖨️ Imprimir</button>
-            <span>Los campos en amarillo se pueden corregir o completar antes de imprimir.</span>
+                <button onclick="window.print()">🖨️ Imprimir</button>
+                <span>Los campos en amarillo se pueden corregir o completar antes de imprimir.</span>
 </div>
 <div class="hoja">
-            <table class="enc">
-                <tr>
-                    <td class="logo-box"><img src="${logoUrl}" alt="" onerror="this.style.display='none'"></td>
-                    <td class="titulo-inst">
-                        UNIVERSIDAD POLITÉCNICA DE TULANCINGO<br>
-                        <span class="sub">DIRECCIÓN DE RECURSOS MATERIALES Y SERVICIOS GENERALES</span><br>
-                        <span class="sub">ENTRADA DE MATERIALES, MOBILIARIO Y EQUIPO</span>
-                    </td>
-                    <td class="logo-box der"><img src="${logoPolyUrl}" alt="" onerror="this.style.display='none'"></td>
-                    <td class="fecha-folio">
-                        <table>
-                            <tr>
-                                <td style="width:38%"><span class="lbl">Fecha:</span><span class="val centro">${fechaCorta}</span></td>
-                                <td><span class="lbl">Folio:</span><span class="val centro" contenteditable="true">${esc(nota.folio)}</span></td>
-                            </tr>
-                        </table>
-                    </td>
-                </tr>
-            </table>
-
-            <table class="datos" style="margin-top:4px;">
-                <tr>
-                    <td class="nombre-doc" rowspan="2">Nota de Entrada</td>
-                    <td style="width:24%"><span class="lbl">Requisición núm.:</span><span class="val" contenteditable="true">${esc(ex.requisicion) || "&nbsp;"}</span></td>
-                    <td>
-                        <span class="lbl">Número y nombre de proyecto:</span><span class="val" contenteditable="true">${esc(ex.proyecto) || "&nbsp;"}</span>
-                        <span class="lbl" style="margin-top:2px;">Líder del proyecto: <span contenteditable="true" style="text-transform:none;color:#000;font-weight:bold;">${esc(ex.lider_proyecto) || "&nbsp;"}</span></span>
-                    </td>
-                </tr>
-                <tr>
-                    <td><span class="lbl">Factura núm.:</span><span class="val" contenteditable="true">${esc(ex.factura) || "&nbsp;"}</span></td>
-                    <td><span class="lbl">Proveedor:</span><span class="val">${esc(nota.proveedor || "")}</span></td>
-                </tr>
-            </table>
-
-            <table class="items">
-                <colgroup>
-                    <col class="c-item"><col class="c-cant"><col class="c-uni"><col class="c-desc"><col class="c-cu"><col class="c-imp">
-                </colgroup>
-                <thead>
+                <table class="enc">
                     <tr>
-                        <th>Núm.</th><th>Cantidad</th><th>Unidad</th>
-                        <th>Descripción del artículo</th><th>Costo unitario</th><th>Importe</th>
+                        <td class="logo-box"><img src="${logoUrl}" alt="" onerror="this.style.display='none'"></td>
+                        <td class="titulo-inst">
+                            UNIVERSIDAD POLITÉCNICA DE TULANCINGO<br>
+                            <span class="sub">DIRECCIÓN DE RECURSOS MATERIALES Y SERVICIOS GENERALES</span><br>
+                            <span class="sub">ENTRADA DE MATERIALES, MOBILIARIO Y EQUIPO</span>
+                        </td>
+                        <td class="logo-box der"><img src="${logoPolyUrl}" alt="" onerror="this.style.display='none'"></td>
+                        <td class="fecha-folio">
+                            <table>
+                                <tr>
+                                    <td style="width:38%"><span class="lbl">Fecha:</span><span class="val centro">${fechaCorta}</span></td>
+                                    <td><span class="lbl">Folio:</span><span class="val centro" contenteditable="true">${esc(nota.folio)}</span></td>
+                                </tr>
+                            </table>
+                        </td>
                     </tr>
-                </thead>
-                <tbody>
-                    ${filasProd}
-                    ${filasVacias}
-                </tbody>
-            </table>
-
-            <div class="totales-wrap">
-                <table class="totales">
-                    <tr><td class="et">Subtotal</td><td class="mn"><span>$</span><span>${dinero(subtotal)}</span></td></tr>
-                    <tr><td class="et">Impuestos retenidos</td><td class="mn"><span>$</span><span>&nbsp;</span></td></tr>
-                    <tr><td class="et">IVA</td><td class="mn"><span>$</span><span>${dinero(iva)}</span></td></tr>
-                    <tr><td class="et"><strong>Total</strong></td><td class="mn"><span>$</span><span><strong>${dinero(total)}</strong></span></td></tr>
                 </table>
-            </div>
 
-            <table class="pie">
-                <tr>
-                    <td class="firma" style="width:27%"><span class="lbl">Recibido por:</span><span class="val centro">${esc(NOMBRE_RECEPTOR_ALMACEN)}</span></td>
-                    <td style="width:25%"><span class="lbl">Fuente de financiamiento:</span><span class="val centro" contenteditable="true">${esc(ex.fuente_financiamiento) || "&nbsp;"}</span></td>
-                    <td style="width:22%"><span class="lbl">Tipo de financiamiento:</span><span class="val centro" contenteditable="true">${esc(ex.tipo_financiamiento) || "&nbsp;"}</span></td>
-                    <td rowspan="2"><span class="lbl">Observaciones:</span><span class="val" style="font-weight:normal;">${esc(nota.observaciones || "")}</span></td>
-                </tr>
-                <tr>
-                    <td><span class="lbl">Núm. de pedido - contrato:</span><span class="val centro" contenteditable="true">${esc(ex.num_pedido) || "&nbsp;"}</span></td>
-                    <td colspan="2"><span class="lbl">Núm. orden de compra:</span><span class="val centro" contenteditable="true">${esc(ex.orden_compra) || "&nbsp;"}</span></td>
-                </tr>
-            </table>
+                <table class="datos" style="margin-top:4px;">
+                    <tr>
+                        <td class="nombre-doc" rowspan="2">Nota de Entrada</td>
+                        <td style="width:24%"><span class="lbl">Requisición núm.:</span><span class="val" contenteditable="true">${esc(ex.requisicion) || "&nbsp;"}</span></td>
+                        <td>
+                            <span class="lbl">Número y nombre de proyecto:</span><span class="val" contenteditable="true">${esc(ex.proyecto) || "&nbsp;"}</span>
+                            <span class="lbl" style="margin-top:2px;">Líder del proyecto: <span contenteditable="true" style="text-transform:none;color:#000;font-weight:bold;">${esc(ex.lider_proyecto) || "&nbsp;"}</span></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="lbl">Factura núm.:</span><span class="val" contenteditable="true">${esc(ex.factura) || "&nbsp;"}</span></td>
+                        <td><span class="lbl">Proveedor:</span><span class="val">${esc(nota.proveedor || "")}</span></td>
+                    </tr>
+                </table>
 
-            <div class="rev">Rev.01 24 Ago 2017<br>FR-SAD-029</div>
+                <table class="items">
+                    <colgroup>
+                        <col class="c-item"><col class="c-cant"><col class="c-uni"><col class="c-desc"><col class="c-cu"><col class="c-imp">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Núm.</th><th>Cantidad</th><th>Unidad</th>
+                            <th>Descripción del artículo</th><th>Costo unitario</th><th>Importe</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${filasProd}
+                        ${filasVacias}
+                    </tbody>
+                </table>
+
+                <div class="totales-wrap">
+                    <table class="totales">
+                        <tr><td class="et">Subtotal</td><td class="mn"><span>$</span><span>${dinero(subtotal)}</span></td></tr>
+                        <tr><td class="et">Impuestos retenidos</td><td class="mn"><span>$</span><span>&nbsp;</span></td></tr>
+                        <tr><td class="et">IVA</td><td class="mn"><span>$</span><span>${dinero(iva)}</span></td></tr>
+                        <tr><td class="et"><strong>Total</strong></td><td class="mn"><span>$</span><span><strong>${dinero(total)}</strong></span></td></tr>
+                    </table>
+                </div>
+
+                <table class="pie">
+                    <tr>
+                        <td class="firma" style="width:27%"><span class="lbl">Recibido por:</span><span class="val centro">${esc(NOMBRE_RECEPTOR_ALMACEN)}</span></td>
+                        <td style="width:25%"><span class="lbl">Fuente de financiamiento:</span><span class="val centro" contenteditable="true">${esc(ex.fuente_financiamiento) || "&nbsp;"}</span></td>
+                        <td style="width:22%"><span class="lbl">Tipo de financiamiento:</span><span class="val centro" contenteditable="true">${esc(ex.tipo_financiamiento) || "&nbsp;"}</span></td>
+                        <td rowspan="2"><span class="lbl">Observaciones:</span><span class="val" style="font-weight:normal;">${esc(nota.observaciones || "")}</span></td>
+                    </tr>
+                    <tr>
+                        <td><span class="lbl">Núm. de pedido - contrato:</span><span class="val centro" contenteditable="true">${esc(ex.num_pedido) || "&nbsp;"}</span></td>
+                        <td colspan="2"><span class="lbl">Núm. orden de compra:</span><span class="val centro" contenteditable="true">${esc(ex.orden_compra) || "&nbsp;"}</span></td>
+                    </tr>
+                </table>
+
+                <div class="rev">Rev.01 24 Ago 2017<br>FR-SAD-029</div>
 </div>
 </body>
 </html>`;
@@ -1585,63 +1663,63 @@
             }
 
             const filas = notasMostradas.map(nota => `
-                        <tr>
-                            <td>${nota.folio}</td>
-                            <td>${new Date(nota.fecha).toLocaleDateString("es-MX")}</td>
-                            <td>${nota.proveedor || "—"}</td>
-                            <td>${NOMBRE_RECEPTOR_ALMACEN}</td>
-                            <td style="text-align:right;">$${Number(nota.total || 0).toFixed(2)}</td>
-                        </tr>
-                    `).join("");
+                            <tr>
+                                <td>${nota.folio}</td>
+                                <td>${new Date(nota.fecha).toLocaleDateString("es-MX")}</td>
+                                <td>${nota.proveedor || "—"}</td>
+                                <td>${NOMBRE_RECEPTOR_ALMACEN}</td>
+                                <td style="text-align:right;">$${Number(nota.total || 0).toFixed(2)}</td>
+                            </tr>
+                        `).join("");
 
             const granTotal = notasMostradas.reduce((acc, nota) => acc + Number(nota.total || 0), 0);
 
             const html = `
-                        <!DOCTYPE html>
-                        <html lang="es">
-                        <head>
-                            <meta charset="utf-8">
-                            <title>Notas de Entrada - Reporte</title>
-                            <style>
-                                body { font-family: Arial, sans-serif; padding: 30px; color: #111; }
-                                h1 { font-size: 20px; margin-bottom: 4px; }
-                                .fecha-reporte { color: #64748B; font-size: 13px; margin-bottom: 18px; }
-                                table { width: 100%; border-collapse: collapse; font-size: 13px; }
-                                th, td { border: 1px solid #ccc; padding: 8px 10px; }
-                                th { background: #f4f4f4; text-align: left; }
-                                .total { text-align: right; font-size: 15px; font-weight: 700; margin-top: 12px; }
-                                @media print { body { padding: 0; } }
-                            </style>
-                        </head>
-                        <body>
-                            <h1>Reporte de Notas de Entrada</h1>
-                            <p class="fecha-reporte">
-                                Generado el ${new Date().toLocaleString("es-MX")}
-                                — ${notasMostradas.length} nota(s)
-                            </p>
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Folio</th>
-                                        <th>Fecha</th>
-                                        <th>Proveedor</th>
-                                        <th>Recibió</th>
-                                        <th style="text-align:right;">Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${filas}
-                                </tbody>
-                            </table>
-                            <div class="total">Total general: $${granTotal.toFixed(2)}</div>
-                            <script>
-                                window.onload = function () {
-                                    window.print();
-                                };
-                            <\/script>
-                        </body>
-                        </html>
-                    `;
+                            <!DOCTYPE html>
+                            <html lang="es">
+                            <head>
+                                <meta charset="utf-8">
+                                <title>Notas de Entrada - Reporte</title>
+                                <style>
+                                    body { font-family: Arial, sans-serif; padding: 30px; color: #111; }
+                                    h1 { font-size: 20px; margin-bottom: 4px; }
+                                    .fecha-reporte { color: #64748B; font-size: 13px; margin-bottom: 18px; }
+                                    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+                                    th, td { border: 1px solid #ccc; padding: 8px 10px; }
+                                    th { background: #f4f4f4; text-align: left; }
+                                    .total { text-align: right; font-size: 15px; font-weight: 700; margin-top: 12px; }
+                                    @media print { body { padding: 0; } }
+                                </style>
+                            </head>
+                            <body>
+                                <h1>Reporte de Notas de Entrada</h1>
+                                <p class="fecha-reporte">
+                                    Generado el ${new Date().toLocaleString("es-MX")}
+                                    — ${notasMostradas.length} nota(s)
+                                </p>
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Folio</th>
+                                            <th>Fecha</th>
+                                            <th>Proveedor</th>
+                                            <th>Recibió</th>
+                                            <th style="text-align:right;">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${filas}
+                                    </tbody>
+                                </table>
+                                <div class="total">Total general: $${granTotal.toFixed(2)}</div>
+                                <script>
+                                    window.onload = function () {
+                                        window.print();
+                                    };
+                                <\/script>
+                            </body>
+                            </html>
+                        `;
 
             const ventana = window.open("", "_blank", "width=800,height=900");
             if (!ventana) {
@@ -1665,12 +1743,12 @@
 
                 const fila = document.createElement("tr");
                 fila.innerHTML = `
-                            <td>${item.nombre}</td>
-                            <td>${item.cantidad}</td>
-                            <td>$${item.precio_unitario.toFixed(2)}</td>
-                            <td>$${subtotal.toFixed(2)}</td>
-                            <td><button class="quitar" data-index="${index}"><i class="fas fa-trash"></i></button></td>
-                        `;
+                                <td>${item.nombre}</td>
+                                <td>${item.cantidad}</td>
+                                <td>$${item.precio_unitario.toFixed(2)}</td>
+                                <td>$${subtotal.toFixed(2)}</td>
+                                <td><button class="quitar" data-index="${index}"><i class="fas fa-trash"></i></button></td>
+                            `;
                 DOM.tablaProductosBody.appendChild(fila);
             });
 
@@ -1784,7 +1862,7 @@
                 DOM.btnGuardarNota.disabled = true;
                 DOM.btnGuardarTexto.textContent = "Guardando…";
 
-                const res = await fetch(API_NOTAS, {
+                const res = await fetchAutenticado(API_NOTAS, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
