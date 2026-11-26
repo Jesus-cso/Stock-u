@@ -6,3 +6,4 @@ importar.js
 exportar.ps1
 esquema.sql
 *.txt
+.env.bak
