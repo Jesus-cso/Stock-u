@@ -1,9 +1,18 @@
+# Variables de entorno
 .env
+.env.*
+!.env.example
+.env.bak
+
+# Dependencias
 node_modules/
+
+# Datos locales
 datos/
+
+# Archivos auxiliares
 copiar.js
 importar.js
 exportar.ps1
 esquema.sql
 *.txt
-.env.bak
