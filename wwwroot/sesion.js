@@ -1,4 +1,4 @@
-﻿/* =====================================================
+/* =====================================================
    sesion.js  -  Sesión compartida de StockUPT
 
    Uso: incluirlo al INICIO del <body> de cada página
@@ -14,7 +14,7 @@
 (function () {
     "use strict";
 
-    var API = window.STOCK_API || "http://localhost:3000";
+    var API = window.STOCK_API || "";
     window.STOCK_API = API;
 
     var CLAVE_TOKEN = "stockToken";
