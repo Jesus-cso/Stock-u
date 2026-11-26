@@ -1,83 +1,110 @@
-﻿
-const sql = require("mssql");
+﻿const { Pool, types } = require("pg");
 
 // =====================================================
-// CONFIGURACIÓN SQL SERVER
+// CONFIGURACIÓN POSTGRESQL
+// Render entrega la conexión en DATABASE_URL
 // =====================================================
+
+// PostgreSQL devuelve bigint y numeric como texto; los pasamos a número
+types.setTypeParser(20, (v) => Number(v));     // bigint
+types.setTypeParser(1700, (v) => parseFloat(v)); // numeric
+
+const url = process.env.DATABASE_URL;
+
+if (!url) {
+    throw new Error("Falta DATABASE_URL en el archivo .env o en las variables de Render");
+}
+
+const esLocal = /@(localhost|127\.0\.0\.1)/.test(url);
 
 const config = {
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    server: process.env.DB_SERVER || "127.0.0.1",
-    port: Number(process.env.DB_PORT) || 1433,
-    database: process.env.DB_NAME || "VistasStockDB",
-
-    options: {
-        encrypt: false,
-        trustServerCertificate: true,
-        enableArithAbort: true
-    },
-
-    pool: {
-        max: 10,
-        min: 0,
-        idleTimeoutMillis: 30000
-    },
-
-    connectionTimeout: 30000,
-    requestTimeout: 30000
+    connectionString: url,
+    ssl: esLocal ? false : { rejectUnauthorized: false },
+    max: 10,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 30000
 };
 
 // =====================================================
-// VALIDAR CONFIGURACIÓN
+// CAPA DE COMPATIBILIDAD CON mssql
+// Permite seguir usando en las rutas:
+//   pool.request().input("x", sql.NVarChar(50), valor).query("... @x ...")
+// El texto @x se convierte a $1 y el resultado trae .recordset
 // =====================================================
 
-if (!config.user || !config.password) {
-    throw new Error(
-        "Faltan DB_USER o DB_PASSWORD en el archivo .env"
-    );
+// sql.NVarChar(50), sql.Int, sql.Bit, etc. ya no hacen nada: PostgreSQL deduce el tipo
+const sql = new Proxy({}, {
+    get: () => (...args) => ({})
+});
+
+class Peticion {
+    constructor(pool) {
+        this.pool = pool;
+        this.parametros = [];
+    }
+
+    // input(nombre, valor)  o  input(nombre, tipo, valor)
+    input(nombre, tipoOValor, valor) {
+        const v = arguments.length === 2 ? tipoOValor : valor;
+        this.parametros.push({ nombre, valor: v === undefined ? null : v });
+        return this;
+    }
+
+    async query(texto) {
+        const orden = [];
+        const valores = [];
+
+        const convertido = texto.replace(/(?<!@)@([A-Za-z_][A-Za-z0-9_]*)/g, (m, nombre) => {
+            const p = this.parametros.find(x => x.nombre === nombre);
+            if (!p) return m;
+
+            let i = orden.indexOf(nombre);
+            if (i === -1) {
+                orden.push(nombre);
+                valores.push(p.valor);
+                i = orden.length - 1;
+            }
+            return "$" + (i + 1);
+        });
+
+        const r = await this.pool.query(convertido, valores);
+
+        return {
+            recordset: r.rows,
+            recordsets: [r.rows],
+            rowsAffected: [r.rowCount]
+        };
+    }
 }
 
 // =====================================================
 // CONEXIÓN ÚNICA
 // =====================================================
 
-let poolPromise = null;
+let pool = null;
 
 async function getPool() {
-    try {
-        if (!poolPromise) {
-            const pool = new sql.ConnectionPool(config);
+    if (!pool) {
+        pool = new Pool(config);
 
-            pool.on("error", (error) => {
-                console.error("❌ Error en pool SQL:", error.message);
-            });
+        pool.on("error", (error) => {
+            console.error("❌ Error en pool PostgreSQL:", error.message);
+        });
 
-            poolPromise = pool.connect()
-                .then((connectedPool) => {
-                    console.log(
-                        "✅ (db.js) Conectado a SQL Server correctamente"
-                    );
-
-                    return connectedPool;
-                })
-                .catch((error) => {
-                    poolPromise = null;
-
-                    console.error(
-                        "❌ Error conectando a SQL Server:",
-                        error.message
-                    );
-
-                    throw error;
-                });
+        try {
+            await pool.query("SELECT 1");
+            console.log("✅ (db.js) Conectado a PostgreSQL correctamente");
+        } catch (error) {
+            console.error("❌ Error conectando a PostgreSQL:", error.message);
+            pool = null;
+            throw error;
         }
-
-        return await poolPromise;
-
-    } catch (error) {
-        throw error;
     }
+
+    return {
+        request: () => new Peticion(pool),
+        query: (texto, valores) => pool.query(texto, valores)
+    };
 }
 
 // =====================================================
@@ -85,18 +112,12 @@ async function getPool() {
 // =====================================================
 
 async function closePool() {
-    if (poolPromise) {
-        const pool = await poolPromise;
-        await pool.close();
-        poolPromise = null;
-
-        console.log("🔌 Conexión SQL Server cerrada");
+    if (pool) {
+        await pool.end();
+        pool = null;
+        console.log("🔌 Conexión PostgreSQL cerrada");
     }
 }
-
-// =====================================================
-// EXPORTAR
-// =====================================================
 
 module.exports = {
     sql,

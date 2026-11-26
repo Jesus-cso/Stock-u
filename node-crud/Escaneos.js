@@ -24,6 +24,7 @@ function limpiar() {
 }
 
 function validarToken(req, res, next) {
+    if (req.usuario) return next(); // ya entró con JWT (PC)
     const token = process.env.ESCANER_TOKEN;
     if (!token) return next();
     if (req.get("x-escaner-token") === token) return next();

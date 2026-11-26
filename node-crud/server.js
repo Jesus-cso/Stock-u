@@ -52,6 +52,26 @@ const verificarToken = require("./verificarToken");
 const todos = verificarToken();                   // cualquier usuario autenticado
 const soloAlmacen = verificarToken(rolesAlmacen); // personal de almacén
 
+// /escaneos lo usan dos clientes distintos:
+//  - la PC (pantallas de escritorio): entra con su JWT (Authorization: Bearer ...)
+//  - el celular (movil.html / app Expo): no tiene sesión, entra con la clave
+//    del scanner en el header "x-escaner-token" (= ESCANER_TOKEN del .env)
+const crypto = require("crypto");
+
+function claveEscanerValida(req) {
+    const esperada = process.env.ESCANER_TOKEN || "";
+    const recibida = req.get("x-escaner-token") || "";
+    if (!esperada || !recibida) return false;
+    const a = Buffer.from(recibida);
+    const b = Buffer.from(esperada);
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+function jwtOClaveEscaner(req, res, next) {
+    if (claveEscanerValida(req)) return next();
+    return todos(req, res, next); // si no hay clave válida, se exige el JWT
+}
+
 // =====================================
 // CREAR APLICACIÓN
 // =====================================
@@ -141,7 +161,7 @@ app.use("/productos", todos, require("./productos"));
 app.use("/miembros", todos, require("./miembros"));
 app.use("/alertas", todos, require("./alertas"));
 app.use("/proyectos", todos, require("./proyectos"));
-app.use("/escaneos", todos, require("./Escaneos"));
+app.use("/escaneos", jwtOClaveEscaner, require("./Escaneos"));
 
 // =====================================
 // RUTAS SOLO PERSONAL DE ALMACÉN
