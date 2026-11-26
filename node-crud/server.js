@@ -89,10 +89,10 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use(express.static(path.join(__dirname, "wwwroot")));
+app.use(express.static(path.join(__dirname, "..", "wwwroot")));
 
 app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "wwwroot", "index.html"));
+    res.sendFile(path.join(__dirname, "..", "wwwroot", "index.html"));
 });
 
 app.get("/api/status", (req, res) => {
