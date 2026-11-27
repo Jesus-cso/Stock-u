@@ -34,7 +34,6 @@ router.get(["/", "/salida"], async (req, res, next) => {
             SELECT s.id_nota, s.id_producto, s.cantidad, p.nombre AS producto
             FROM Salidas s
             LEFT JOIN Productos p ON p.id_producto = s.id_producto
-        `CREATE SEQUENCE IF NOT EXISTS folioseq START WITH 1 INCREMENT BY 1`;
         `);
 
         const porNota = {};
@@ -114,7 +113,8 @@ router.post("/salida", async (req, res, next) => {
 
         // ---- Folio (secuencia compartida FolioSeq) ----
         const folioResult = await request()
-            .query(`SELECT nextval('folioseq') AS numero`);
+            .query(`CREATE SEQUENCE IF NOT EXISTS folioseq START WITH 1 INCREMENT BY 1`;
+        `SELECT nextval('folioseq') AS numero`);
 
         const folio = "UPT-S-" + folioResult.recordset[0].numero;
 
