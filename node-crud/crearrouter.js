@@ -17,8 +17,6 @@ const router = express.Router();
 
 router.post("/registro", async (req, res, next) => {
 
-    let transaction;
-
     try {
 
         // Solo quien conozca el código puede crear cuentas
@@ -30,7 +28,7 @@ router.post("/registro", async (req, res, next) => {
             });
         }
 
-        const { nombre, apellidos, numero_control, password } = req.body;
+        const { nombre, apellidos, telefono, numero_control, password } = req.body;
 
         // Evita que .trim() truene con 500 si llega algo que no es texto
         if ([nombre, apellidos, numero_control, password]
@@ -49,6 +47,9 @@ router.post("/registro", async (req, res, next) => {
         const nombreCompleto = `${nombre.trim()} ${apellidos.trim()}`;
         const usuarioNombre = numero_control.trim();
         const correoFake = `${usuarioNombre}@vistasstock.com`;
+        const telefonoLimpio = (typeof telefono === "string" && telefono.trim())
+            ? telefono.trim()
+            : null;
 
         const pool = await getPool();
 
@@ -57,7 +58,7 @@ router.post("/registro", async (req, res, next) => {
             .input("usuario", sql.NVarChar(50), usuarioNombre)
             .query(`
                 SELECT id_usuario
-                FROM Usuarios
+                FROM usuarios
                 WHERE usuario = @usuario
             `);
 
@@ -70,56 +71,43 @@ router.post("/registro", async (req, res, next) => {
         // Encriptar contraseña
         const passwordHash = await bcrypt.hash(password, 10);
 
-        // Usuario + trabajador en una sola transacción: o se crean los dos o ninguno
-        transaction = new sql.Transaction(pool);
-        await transaction.begin();
-
-        const resultUser = await new sql.Request(transaction)
+        // Usuario + trabajador en una sola sentencia atómica de PostgreSQL
+        const resultUser = await pool.request()
             .input("nombre", sql.NVarChar(100), nombreCompleto)
             .input("correo", sql.NVarChar(150), correoFake)
             .input("usuario", sql.NVarChar(50), usuarioNombre)
             .input("password_hash", sql.NVarChar(255), passwordHash)
             .input("rol", sql.NVarChar(30), "usuario")
+            .input("telefono", sql.NVarChar(20), telefonoLimpio)
             .query(`
-                INSERT INTO Usuarios
-                (
-                    nombre,
-                    correo,
-                    usuario,
-                    password_hash,
-                    rol,
-                    activo
+                WITH nuevo_usuario AS (
+                    INSERT INTO usuarios
+                    (
+                        nombre,
+                        correo,
+                        usuario,
+                        password_hash,
+                        rol,
+                        activo
+                    )
+                    VALUES
+                    (
+                        @nombre,
+                        @correo,
+                        @usuario,
+                        @password_hash,
+                        @rol,
+                        TRUE
+                    )
+                    RETURNING id_usuario
+                ),
+                nuevo_trabajador AS (
+                    INSERT INTO trabajadores (matricula, nombre, telefono)
+                    VALUES (@usuario, @nombre, @telefono)
+                    ON CONFLICT (matricula) DO NOTHING
                 )
-                OUTPUT INSERTED.id_usuario
-                VALUES
-                (
-                    @nombre,
-                    @correo,
-                    @usuario,
-                    @password_hash,
-                    @rol,
-                    1
-                )
+                SELECT id_usuario FROM nuevo_usuario
             `);
-
-        // Registrar trabajador si no existe
-        await new sql.Request(transaction)
-            .input("matricula", sql.NVarChar(30), usuarioNombre)
-            .input("nombre", sql.NVarChar(150), nombreCompleto)
-            .query(`
-                IF NOT EXISTS
-                (
-                    SELECT 1
-                    FROM Trabajadores
-                    WHERE matricula = @matricula
-                )
-                BEGIN
-                    INSERT INTO Trabajadores (matricula, nombre)
-                    VALUES (@matricula, @nombre)
-                END
-            `);
-
-        await transaction.commit();
 
         res.status(201).json({
             mensaje: "Usuario registrado con éxito.",
@@ -128,16 +116,8 @@ router.post("/registro", async (req, res, next) => {
 
     } catch (error) {
 
-        if (transaction) {
-            try {
-                await transaction.rollback();
-            } catch (errorRollback) {
-                console.error("❌ Error al hacer rollback:", errorRollback);
-            }
-        }
-
-        // Dos registros a la vez con el mismo número de control
-        if (error.number === 2627 || error.number === 2601) {
+        // PostgreSQL unique_violation (23505) si dos registros chocan al mismo tiempo
+        if (error.code === "23505" || error.number === 2627 || error.number === 2601) {
             return res.status(400).json({
                 error: "El número de control ya se encuentra registrado."
             });
