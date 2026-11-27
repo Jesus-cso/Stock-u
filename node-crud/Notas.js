@@ -34,6 +34,7 @@ router.get(["/", "/salida"], async (req, res, next) => {
             SELECT s.id_nota, s.id_producto, s.cantidad, p.nombre AS producto
             FROM Salidas s
             LEFT JOIN Productos p ON p.id_producto = s.id_producto
+        `CREATE SEQUENCE IF NOT EXISTS folioseq START WITH 1 INCREMENT BY 1`;
         `);
 
         const porNota = {};
