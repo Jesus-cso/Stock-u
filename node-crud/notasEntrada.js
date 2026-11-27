@@ -4,10 +4,10 @@ const { enviarCorreoNotaEntrada } = require("./mailer");
 
 const router = express.Router();
 
-/*==================================
-    FUNCIÓN: generar folio de nota
-===================================*/
 async function generarFolio(request) {
+    await request.query(`
+        CREATE SEQUENCE IF NOT EXISTS folioseq START WITH 1 INCREMENT BY 1
+    `);
     const result = await request.query(`
         SELECT nextval('folioseq') AS numero
     `);
@@ -15,14 +15,9 @@ async function generarFolio(request) {
     return "F-" + String(numero).padStart(6, "0");
 }
 
-/*==================================
-    FUNCIÓN AUXILIAR: Obtener siguientes consecutivos 
-    para Requisición y Factura (Automáticos)
-===================================*/
 router.get("/siguientes-consecutivos", async (req, res, next) => {
     try {
         const pool = await getPool();
-        // Puedes adaptar esta consulta según cómo guardes tus folios o requisiciones en la BD
         const rReq = await pool.request().query(`
             SELECT requisicion FROM NotasEntrada WHERE requisicion LIKE 'R-%' ORDER BY id_nota DESC LIMIT 1
         `);
@@ -30,7 +25,6 @@ router.get("/siguientes-consecutivos", async (req, res, next) => {
             SELECT factura FROM NotasEntrada WHERE factura LIKE 'F-%' ORDER BY id_nota DESC LIMIT 1
         `);
 
-        // Generar siguiente valor numérico básico de ejemplo
         let nextReq = "R-000001";
         if (rReq.recordset.length > 0 && rReq.recordset[0].requisicion) {
             const match = rReq.recordset[0].requisicion.match(/\d+/);
@@ -94,9 +88,6 @@ function mensajeFK(error) {
     return null;
 }
 
-/*==================================
-    GET /notasEntrada
-===================================*/
 router.get("/", async (req, res, next) => {
     try {
         const pool = await getPool();
@@ -123,9 +114,6 @@ router.get("/", async (req, res, next) => {
     }
 });
 
-/*==================================
-    GET /notasEntrada/:id
-===================================*/
 router.get("/:id", async (req, res, next) => {
     try {
         const id = Number(req.params.id);
@@ -185,9 +173,6 @@ router.get("/:id", async (req, res, next) => {
     }
 });
 
-/*==================================
-    POST /notasEntrada
-===================================*/
 router.post("/", async (req, res, next) => {
     try {
         const pool = await getPool();
@@ -210,7 +195,6 @@ router.post("/", async (req, res, next) => {
         const idProyecto = idOpcional(id_proyecto, "id_proyecto");
         const idMiembro = idOpcional(id_miembro, "id_miembro");
 
-        // Fuente de financiamiento: Por defecto "PUA" si viene vacía
         let fuente = textoOpcional(req.body.fuente_financiamiento, 100, "La fuente de financiamiento");
         if (!fuente) {
             fuente = "PUA";
@@ -236,59 +220,71 @@ router.post("/", async (req, res, next) => {
         }
 
         for (const item of productos) {
+            const cant = Number(item.cantidad);
             if (!Number.isInteger(Number(item.id_producto)) || Number(item.id_producto) <= 0
-                || !Number.isInteger(Number(item.cantidad)) || Number(item.cantidad) <= 0) {
+                || Number.isNaN(cant) || cant <= 0) {
                 return res.status(400).json({ error: "Cada producto necesita id_producto y cantidad válidos." });
             }
         }
 
         const notaCreada = await pool.transaccion(async (request) => {
+            const folio = await generarFolio(request());
 
-        const folio = await generarFolio(request());
-
-        const resultNota = await request()
-            .input("folio", sql.NVarChar(20), folio)
-            .input("id_proveedor", sql.Int, idProveedor)
-            .input("id_miembro", sql.Int, idMiembro)
-            .input("id_proyecto", sql.Int, idProyecto)
-            .input("observaciones", sql.NVarChar(300), obs)
-            .input("requisicion", sql.NVarChar(50), requisicion)
-            .input("factura", sql.NVarChar(50), factura)
-            .input("fuente", sql.NVarChar(100), fuente)
-            .input("tipo_fin", sql.NVarChar(30), tipoFin)
-            .input("num_pedido", sql.NVarChar(50), numPedido)
-            .input("orden_compra", sql.NVarChar(50), ordenCompra)
-            .query(`
-                INSERT INTO NotasEntrada (
-                    folio, id_proveedor, id_miembro, id_proyecto, observaciones,
-                    requisicion, factura, fuente_financiamiento,
-                    tipo_financiamiento, num_pedido, orden_compra
-                )
-                VALUES (
-                    @folio, @id_proveedor, @id_miembro, @id_proyecto, @observaciones,
-                    @requisicion, @factura, @fuente,
-                    @tipo_fin, @num_pedido, @orden_compra
-                )
-                RETURNING id_nota, folio, fecha
-            `);
-
-        const creada = resultNota.recordset[0];
-
-        for (const item of productos) {
-            const unidadLimpia = item.unidad ? String(item.unidad).trim() || null : null;
-            await request()
-                .input("id_nota", sql.Int, creada.id_nota)
-                .input("id_producto", sql.Int, item.id_producto)
-                .input("cantidad", sql.Int, item.cantidad)
-                .input("precio_unitario", sql.Decimal(10, 2), Number(item.precio_unitario ?? 0))
-                .input("unidad", sql.NVarChar(20), unidadLimpia)
+            const resultNota = await request()
+                .input("folio", sql.NVarChar(20), folio)
+                .input("id_proveedor", sql.Int, idProveedor)
+                .input("id_miembro", sql.Int, idMiembro)
+                .input("id_proyecto", sql.Int, idProyecto)
+                .input("observaciones", sql.NVarChar(300), obs)
+                .input("requisicion", sql.NVarChar(50), requisicion)
+                .input("factura", sql.NVarChar(50), factura)
+                .input("fuente", sql.NVarChar(100), fuente)
+                .input("tipo_fin", sql.NVarChar(30), tipoFin)
+                .input("num_pedido", sql.NVarChar(50), numPedido)
+                .input("orden_compra", sql.NVarChar(50), ordenCompra)
                 .query(`
-                    INSERT INTO DetalleNotaEntrada (id_nota, id_producto, cantidad, precio_unitario, unidad)
-                    VALUES (@id_nota, @id_producto, @cantidad, @precio_unitario, @unidad)
+                    INSERT INTO NotasEntrada (
+                        folio, id_proveedor, id_miembro, id_proyecto, observaciones,
+                        requisicion, factura, fuente_financiamiento,
+                        tipo_financiamiento, num_pedido, orden_compra
+                    )
+                    VALUES (
+                        @folio, @id_proveedor, @id_miembro, @id_proyecto, @observaciones,
+                        @requisicion, @factura, @fuente,
+                        @tipo_fin, @num_pedido, @orden_compra
+                    )
+                    RETURNING id_nota, folio, fecha
                 `);
-        }
 
-        return creada;
+            const creada = resultNota.recordset[0];
+
+            for (const item of productos) {
+                const cantidadNum = Number(item.cantidad);
+                const precioNum = Number(item.precio_unitario ?? 0);
+                const unidadLimpia = item.unidad ? String(item.unidad).trim() || null : null;
+
+                await request()
+                    .input("id_nota", sql.Int, creada.id_nota)
+                    .input("id_producto", sql.Int, Number(item.id_producto))
+                    .input("cantidad", sql.Decimal(10, 2), cantidadNum)
+                    .input("precio_unitario", sql.Decimal(10, 2), precioNum)
+                    .input("unidad", sql.NVarChar(20), unidadLimpia)
+                    .query(`
+                        INSERT INTO DetalleNotaEntrada (id_nota, id_producto, cantidad, precio_unitario, unidad)
+                        VALUES (@id_nota, @id_producto, @cantidad, @precio_unitario, @unidad)
+                    `);
+
+                await request()
+                    .input("id_producto", sql.Int, Number(item.id_producto))
+                    .input("cantidad", sql.Decimal(10, 2), cantidadNum)
+                    .query(`
+                        UPDATE Productos
+                        SET stock = COALESCE(stock, 0) + @cantidad
+                        WHERE id_producto = @id_producto
+                    `);
+            }
+
+            return creada;
         });
 
         res.status(201).json({
