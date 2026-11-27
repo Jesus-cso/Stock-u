@@ -133,6 +133,7 @@ const limitadorAuth = rateLimit({
 });
 
 app.use("/auth", limitadorAuth, require("./auth"));
+app.use("/crearrouter", limitadorAuth, require("./crearrouter"));
 
 app.use("/productos", todos, require("./productos"));
 app.use("/miembros", todos, require("./miembros"));
@@ -142,7 +143,6 @@ app.use("/escaneos", jwtOClaveEscaner, require("./Escaneos"));
 
 app.use("/proveedores", soloAlmacen, require("./proveedores"));
 app.use("/anaqueles", soloAlmacen, require("./anaqueles"));
-app.use("/crearrouter", soloAlmacen, require("./crearrouter"));
 app.use("/notasEntrada", soloAlmacen, require("./notasEntrada"));
 app.use("/prestamos", soloAlmacen, require("./prestamo"));
 app.use("/Notas", soloAlmacen, require("./pdfNota"), require("./Notas"));
