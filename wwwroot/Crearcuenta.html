@@ -614,6 +614,12 @@
 
                 try {
 
+                    // Token de sesión guardado por login.html
+                    const token =
+                        localStorage.getItem("stockToken") ||
+                        sessionStorage.getItem("stockToken") ||
+                        "";
+
                     const response = await fetch(
                         API_URL + "/crearrouter/registro",
                         {
@@ -621,7 +627,8 @@
                             method: "POST",
 
                             headers: {
-                                "Content-Type": "application/json"
+                                "Content-Type": "application/json",
+                                "Authorization": "Bearer " + token
                             },
 
                             body: JSON.stringify({
@@ -677,8 +684,3 @@
 
 </body>
 </html>
-
-
-
-
-
