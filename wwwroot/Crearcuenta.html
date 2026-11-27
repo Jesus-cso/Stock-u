@@ -12,12 +12,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
-
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Poppins',sans-serif;
+            font-family: 'Poppins', sans-serif;
         }
 
         body {
@@ -25,7 +24,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            background: linear-gradient(135deg,#1565C0,#42A5F5);
+            background: linear-gradient(135deg, #1565C0, #42A5F5);
             padding: 30px;
         }
 
@@ -34,13 +33,12 @@
             max-width: 850px;
             background: #fff;
             border-radius: 20px;
-            box-shadow: 0 20px 50px rgba(0,0,0,.18);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, .18);
             overflow: hidden;
             animation: aparecer .7s;
         }
 
         @keyframes aparecer {
-
             from {
                 opacity: 0;
                 transform: translateY(35px);
@@ -71,7 +69,7 @@
             justify-content: center;
             align-items: center;
             margin-bottom: 18px;
-            box-shadow: 0 5px 20px rgba(0,0,0,.2);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, .2);
         }
 
         .header h1 {
@@ -98,31 +96,35 @@
             flex-direction: column;
         }
 
-            .field label {
-                margin-bottom: 8px;
-                font-weight: 600;
-                color: #444;
-            }
+        .field.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .field label {
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #444;
+        }
 
         .input-box {
             position: relative;
         }
 
-            .input-box input {
-                width: 100%;
-                height: 52px;
-                border: 2px solid #E0E0E0;
-                border-radius: 50px;
-                padding: 0 50px 0 18px;
-                font-size: 15px;
-                transition: .25s;
-                outline: none;
-            }
+        .input-box input {
+            width: 100%;
+            height: 52px;
+            border: 2px solid #E0E0E0;
+            border-radius: 50px;
+            padding: 0 50px 0 18px;
+            font-size: 15px;
+            transition: .25s;
+            outline: none;
+        }
 
-                .input-box input:focus {
-                    border-color: #1565C0;
-                    box-shadow: 0 0 8px rgba(21,101,192,.2);
-                }
+        .input-box input:focus {
+            border-color: #1565C0;
+            box-shadow: 0 0 8px rgba(21, 101, 192, .2);
+        }
 
         .icon {
             position: absolute;
@@ -147,9 +149,9 @@
             transition: .25s;
         }
 
-            .togglePassword:hover {
-                transform: translateY(-50%) scale(1.12);
-            }
+        .togglePassword:hover {
+            transform: translateY(-50%) scale(1.12);
+        }
 
         .strength {
             width: 100%;
@@ -160,12 +162,12 @@
             overflow: hidden;
         }
 
-            .strength span {
-                display: block;
-                width: 0;
-                height: 100%;
-                transition: .35s;
-            }
+        .strength span {
+            display: block;
+            width: 0;
+            height: 100%;
+            transition: .35s;
+        }
 
         .strength-text {
             margin-top: 6px;
@@ -216,11 +218,11 @@
             transition: .25s;
         }
 
-            button:hover {
-                background: #0D47A1;
-                transform: translateY(-2px);
-                box-shadow: 0 10px 20px rgba(0,0,0,.2);
-            }
+        button:hover {
+            background: #0D47A1;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, .2);
+        }
 
         .footer {
             text-align: center;
@@ -228,18 +230,17 @@
             color: #555;
         }
 
-            .footer a {
-                color: #1565C0;
-                text-decoration: none;
-                font-weight: bold;
-            }
+        .footer a {
+            color: #1565C0;
+            text-decoration: none;
+            font-weight: bold;
+        }
 
-                .footer a:hover {
-                    text-decoration: underline;
-                }
+        .footer a:hover {
+            text-decoration: underline;
+        }
 
         @media(max-width:750px) {
-
             .grid {
                 grid-template-columns: 1fr;
             }
@@ -253,22 +254,15 @@
             }
         }
     </style>
-
 </head>
 <body>
 
     <div class="container">
 
         <div class="header">
-
-            <div class="avatar">
-                👤
-            </div>
-
+            <div class="avatar">👤</div>
             <h1>Crear Cuenta</h1>
-
             <p>Sistema de Inventario StockUPT</p>
-
         </div>
 
         <div class="formulario">
@@ -280,189 +274,131 @@
                 <div class="grid">
 
                     <div class="field">
-
                         <label>Nombre</label>
-
                         <div class="input-box">
-
                             <input type="text"
                                    id="nombre"
                                    placeholder="Ingrese su nombre"
                                    required>
-
                             <span class="icon">👤</span>
-
                         </div>
-
                     </div>
 
                     <div class="field">
-
                         <label>Apellidos</label>
-
                         <div class="input-box">
-
                             <input type="text"
                                    id="apellidos"
                                    placeholder="Ingrese sus apellidos"
                                    required>
-
                             <span class="icon">👤</span>
-
                         </div>
-
                     </div>
 
                     <div class="field">
-
                         <label>Teléfono</label>
-
                         <div class="input-box">
-
                             <input type="tel"
                                    id="telefono"
                                    placeholder="Ingrese su teléfono">
-
                             <span class="icon">📞</span>
-
                         </div>
-
                     </div>
 
                     <div class="field">
-
                         <label>Número de Control</label>
-
                         <div class="input-box">
-
                             <input type="text"
                                    id="numero_control"
                                    placeholder="Ejemplo: 21300654"
                                    required>
-
                             <span class="icon">🆔</span>
-
                         </div>
-
                     </div>
 
                     <div class="field">
-
                         <label>Contraseña</label>
-
                         <div class="input-box password-field">
-
                             <input type="password"
                                    id="pw"
                                    placeholder="Ingrese su contraseña"
                                    required>
-
                             <span class="togglePassword"
                                   onclick="togglePassword('pw',this)">
                                 👁️
                             </span>
-
                         </div>
-
                         <div class="strength">
-
                             <span id="strengthBar"></span>
-
                         </div>
-
-                        <div id="strengthText"
-                             class="strength-text">
-
-                        </div>
-
+                        <div id="strengthText" class="strength-text"></div>
                     </div>
 
                     <div class="field">
-
                         <label>Confirmar contraseña</label>
-
                         <div class="input-box password-field">
-
                             <input type="password"
                                    id="cpw"
                                    placeholder="Repita la contraseña"
                                    required>
-
                             <span class="togglePassword"
                                   onclick="togglePassword('cpw',this)">
                                 👁️
                             </span>
-
                         </div>
+                        <div id="matchText" class="match"></div>
+                    </div>
 
-                        <div id="matchText"
-                             class="match">
-
+                    <div class="field full-width">
+                        <label>Código de registro</label>
+                        <div class="input-box">
+                            <input type="text"
+                                   id="codigo_registro"
+                                   placeholder="Ingrese el código de autorización"
+                                   required>
+                            <span class="icon">🔑</span>
                         </div>
-
                     </div>
 
                 </div>
 
                 <div class="button-area">
-
-                    <button type="submit">
-
-                        REGISTRAR CUENTA
-
-                    </button>
-
+                    <button type="submit">REGISTRAR CUENTA</button>
                 </div>
 
             </form>
 
             <div class="footer">
-
                 ¿Ya tienes una cuenta?
-
                 <br><br>
-
-                <a href="Login.html">
-
-                    Iniciar sesión
-
-                </a>
-
+                <a href="Login.html">Iniciar sesión</a>
             </div>
 
         </div>
 
     </div>
-    <script>
 
+    <script>
         const API_URL = "";
 
         /*==============================
             MOSTRAR / OCULTAR PASSWORD
         ==============================*/
-
         function togglePassword(id, icon) {
-
             const input = document.getElementById(id);
 
             if (input.type === "password") {
-
                 input.type = "text";
                 icon.textContent = "🙈";
-
             } else {
-
                 input.type = "password";
                 icon.textContent = "👁️";
-
             }
-
         }
 
         /*==============================
               FUERZA CONTRASEÑA
         ==============================*/
-
         const password = document.getElementById("pw");
         const confirmPassword = document.getElementById("cpw");
 
@@ -471,215 +407,141 @@
         const matchText = document.getElementById("matchText");
 
         password.addEventListener("keyup", () => {
-
             const value = password.value;
-
             let fuerza = 0;
 
-            if (value.length >= 8)
-                fuerza++;
-
-            if (/[A-Z]/.test(value))
-                fuerza++;
-
-            if (/[a-z]/.test(value))
-                fuerza++;
-
-            if (/[0-9]/.test(value))
-                fuerza++;
-
-            if (/[^A-Za-z0-9]/.test(value))
-                fuerza++;
+            if (value.length >= 8) fuerza++;
+            if (/[A-Z]/.test(value)) fuerza++;
+            if (/[a-z]/.test(value)) fuerza++;
+            if (/[0-9]/.test(value)) fuerza++;
+            if (/[^A-Za-z0-9]/.test(value)) fuerza++;
 
             switch (fuerza) {
-
                 case 0:
-
                     strengthBar.style.width = "0%";
                     strengthText.innerHTML = "";
                     break;
-
                 case 1:
-
                     strengthBar.style.width = "20%";
                     strengthBar.style.background = "#E53935";
                     strengthText.innerHTML = "🔴 Muy débil";
                     break;
-
                 case 2:
-
                     strengthBar.style.width = "40%";
                     strengthBar.style.background = "#FB8C00";
                     strengthText.innerHTML = "🟠 Débil";
                     break;
-
                 case 3:
-
                     strengthBar.style.width = "60%";
                     strengthBar.style.background = "#FDD835";
                     strengthText.innerHTML = "🟡 Media";
                     break;
-
                 case 4:
-
                     strengthBar.style.width = "80%";
                     strengthBar.style.background = "#43A047";
                     strengthText.innerHTML = "🟢 Buena";
                     break;
-
                 case 5:
-
                     strengthBar.style.width = "100%";
                     strengthBar.style.background = "#1B5E20";
                     strengthText.innerHTML = "🟢 Muy segura";
                     break;
-
             }
-
         });
-
 
         /*==============================
              VALIDAR CONTRASEÑAS
         ==============================*/
-
         confirmPassword.addEventListener("keyup", () => {
-
             if (confirmPassword.value === "") {
-
                 matchText.innerHTML = "";
                 return;
-
             }
 
             if (password.value === confirmPassword.value) {
-
                 matchText.style.color = "green";
                 matchText.innerHTML = "✔ Las contraseñas coinciden";
-
             } else {
-
                 matchText.style.color = "red";
                 matchText.innerHTML = "✖ Las contraseñas no coinciden";
-
             }
-
         });
-
 
         /*==============================
               MOSTRAR ALERTAS
         ==============================*/
-
         function mostrarAlerta(mensaje, tipo) {
-
             const alerta = document.getElementById("alerta");
 
             alerta.innerHTML = mensaje;
-
             alerta.className = "alert";
 
-            if (tipo === "error")
+            if (tipo === "error") {
                 alerta.classList.add("error");
-
-            else
+            } else {
                 alerta.classList.add("success");
+            }
 
             alerta.style.display = "block";
 
             setTimeout(() => {
-
                 alerta.style.display = "none";
-
             }, 4000);
-
         }
-
 
         /*==============================
                  REGISTRO
         ==============================*/
-
         document.getElementById("registro-form")
             .addEventListener("submit", async (e) => {
-
                 e.preventDefault();
 
                 if (password.value !== confirmPassword.value) {
-
                     mostrarAlerta("Las contraseñas no coinciden.", "error");
                     return;
-
                 }
 
                 try {
-
-                    // Token de sesión guardado por login.html
-                    const token =
-                        localStorage.getItem("stockToken") ||
-                        sessionStorage.getItem("stockToken") ||
-                        "";
-
                     const response = await fetch(
                         API_URL + "/crearrouter/registro",
                         {
-
                             method: "POST",
-
                             headers: {
-                                "Content-Type": "application/json",
-                                "Authorization": "Bearer " + token
+                                "Content-Type": "application/json"
                             },
-
                             body: JSON.stringify({
-
                                 nombre: document.getElementById("nombre").value.trim(),
-
                                 apellidos: document.getElementById("apellidos").value.trim(),
-
                                 telefono: document.getElementById("telefono").value.trim(),
-
                                 numero_control: document.getElementById("numero_control").value.trim(),
-
-                                password: password.value
-
+                                password: password.value,
+                                codigo_registro: document.getElementById("codigo_registro").value.trim()
                             })
-
                         }
                     );
 
                     const data = await response.json();
 
                     if (!response.ok) {
-
                         throw new Error(data.error || "No fue posible registrar el usuario.");
-
                     }
 
                     mostrarAlerta("✅ Usuario registrado correctamente.", "success");
 
                     document.getElementById("registro-form").reset();
-
                     strengthBar.style.width = "0%";
                     strengthText.innerHTML = "";
                     matchText.innerHTML = "";
 
                     setTimeout(() => {
-
                         window.location.href = "Login.html";
-
                     }, 1800);
 
                 } catch (error) {
-
                     console.error(error);
-
                     mostrarAlerta(error.message, "error");
-
                 }
-
             });
-
     </script>
 
 </body>
