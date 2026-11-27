@@ -112,9 +112,10 @@ router.post("/salida", async (req, res, next) => {
         const guardada = await pool.transaccion(async (request) => {
 
         // ---- Folio (secuencia compartida FolioSeq) ----
-        const folioResult = await request()
+        await request()
             .query(`CREATE SEQUENCE IF NOT EXISTS folioseq START WITH 1 INCREMENT BY 1`);
-            await request().query(`SELECT nextval('folioseq') AS numero`);
+        const folioResult = await request()
+            .query(`SELECT nextval('folioseq') AS numero`);
 
         const folio = "UPT-S-" + folioResult.recordset[0].numero;
 
