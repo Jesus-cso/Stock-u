@@ -1,5 +1,4 @@
-
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="utf-8">
@@ -258,6 +257,7 @@
             <a href="historial.html">Historial</a>
             <a href="ver_reprtes.html">Ver Reportes</a>
             <a href="control_productos.html">Control de productos</a>
+            <a href="proyectos.html">Proyectos</a>
         </nav>
 
     </aside>
@@ -370,19 +370,37 @@
                     <span>Miembros /<br>Empleados</span>
                 </a>
 
+                <!-- PROYECTOS -->
+
+                <a class="card-menu" href="proyectos.html">
+                    <div class="card-icon-wrapper">
+                        <svg width="32" height="32" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="3" width="6" height="6" rx="1"></rect>
+                            <rect x="16" y="3" width="6" height="6" rx="1"></rect>
+                            <rect x="16" y="15" width="6" height="6" rx="1"></rect>
+                            <path d="M8 6h8"></path>
+                            <path d="M19 9v6"></path>
+                        </svg>
+                    </div>
+                    <span>Proyectos</span>
+                </a>
+
             </div>
         </div>
 
     </main>
 
-    <script>document.getElementById("cerrarSesion").addEventListener("click", function (e) {
+    <script>
+        document.getElementById("cerrarSesion").addEventListener("click", function (e) {
             e.preventDefault();
 
             if (confirm("¿Estás seguro de que deseas cerrar sesión?")) {
                 window.Sesion.logout();
             }
-        });</script>
+        });
+    </script>
 
 </body>
 </html>
-<a href="Dashbord.html">Dashbord.html</a>
