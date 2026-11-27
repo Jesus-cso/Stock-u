@@ -63,14 +63,8 @@ router.post("/registro", async (req, res, next) => {
             .input("password_hash", sql.NVarChar(255), passwordHash)
             .query(`
                 INSERT INTO Usuarios (nombre, correo, usuario, password_hash, rol, activo)
-                OUTPUT
-                    INSERTED.id_usuario,
-                    INSERTED.nombre,
-                    INSERTED.correo,
-                    INSERTED.usuario,
-                    INSERTED.rol,
-                    INSERTED.activo
-                VALUES (@nombre, @correo, @usuario, @password_hash, 'Usuario', 1)
+                VALUES (@nombre, @correo, @usuario, @password_hash, 'usuario', TRUE)
+                RETURNING id_usuario, nombre, correo, usuario, rol, activo
             `);
 
         return res.status(201).json({

@@ -7,7 +7,7 @@ const router = express.Router();
 function validarId(id) {
     const idNum = parseInt(id);
     if (isNaN(idNum) || idNum <= 0) {
-        throw new Error('ID de proveedor inválido');
+        throw Object.assign(new Error('ID de proveedor inválido'), { status: 400 });
     }
     return idNum;
 }
@@ -15,7 +15,7 @@ function validarId(id) {
 // Middleware de validación para datos del proveedor
 function validarProveedor(data) {
     if (!data.nombre || data.nombre.trim() === '') {
-        throw new Error('El nombre del proveedor es obligatorio');
+        throw Object.assign(new Error('El nombre del proveedor es obligatorio'), { status: 400 });
     }
     return {
         nombre: data.nombre.trim(),
@@ -107,7 +107,7 @@ router.post("/", async (req, res, next) => {
             .query(`
                 SELECT id_proveedor 
                 FROM Proveedores 
-                WHERE nombre = @nombre
+                WHERE LOWER(nombre) = LOWER(@nombre)
             `);
 
         if (checkResult.recordset.length > 0) {
@@ -132,7 +132,6 @@ router.post("/", async (req, res, next) => {
                     correo,
                     direccion
                 )
-                OUTPUT INSERTED.id_proveedor
                 VALUES
                 (
                     @nombre,
@@ -141,6 +140,7 @@ router.post("/", async (req, res, next) => {
                     @correo,
                     @direccion
                 )
+                RETURNING id_proveedor
             `);
 
         const nuevoProveedor = {
@@ -192,7 +192,7 @@ router.put("/:id", async (req, res, next) => {
             .query(`
                 SELECT id_proveedor 
                 FROM Proveedores 
-                WHERE nombre = @nombre AND id_proveedor != @id
+                WHERE LOWER(nombre) = LOWER(@nombre) AND id_proveedor != @id
             `);
 
         if (nameCheck.recordset.length > 0) {
@@ -318,10 +318,10 @@ router.get("/buscar/:termino", async (req, res, next) => {
                     fecha_registro
                 FROM Proveedores
                 WHERE 
-                    nombre LIKE @termino OR
-                    contacto LIKE @termino OR
-                    telefono LIKE @termino OR
-                    correo LIKE @termino
+                    nombre ILIKE @termino OR
+                    contacto ILIKE @termino OR
+                    telefono ILIKE @termino OR
+                    correo ILIKE @termino
                 ORDER BY nombre
             `);
 

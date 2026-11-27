@@ -36,6 +36,7 @@ if (rolesAlmacen.length === 0) {
 const verificarToken = require("./verificarToken");
 const todos = verificarToken();
 const soloAlmacen = verificarToken(rolesAlmacen);
+const lecturaCatalogo = require("./lecturaCatalogo")(rolesAlmacen);
 
 function claveEscanerValida(req) {
     const esperada = process.env.ESCANER_TOKEN || "";
@@ -94,7 +95,9 @@ const carpetaWeb = path.join(__dirname, "..", "wwwroot");
 
 // Resolver archivos HTML sin importar mayusculas, minusculas o si falta .html
 app.use((req, res, next) => {
-    if (req.method !== "GET") return next();
+    // Solo cuando el navegador pide una PAGINA. Los fetch (/anaqueles, /alertas)
+    // deben llegar a la API y no al archivo .html del mismo nombre.
+    if (req.method !== "GET" || !(req.get("accept") || "").includes("text/html")) return next();
     const rutaLimpia = decodeURIComponent(req.path).replace(/^\/+/, "");
     if (!rutaLimpia) return next();
 
@@ -141,8 +144,9 @@ app.use("/alertas", todos, require("./alertas"));
 app.use("/proyectos", todos, require("./proyectos"));
 app.use("/escaneos", jwtOClaveEscaner, require("./Escaneos"));
 
-app.use("/proveedores", soloAlmacen, require("./proveedores"));
-app.use("/anaqueles", soloAlmacen, require("./anaqueles"));
+app.use("/proveedores", lecturaCatalogo(["id_proveedor", "nombre"]), require("./proveedores"));
+app.use("/anaqueles", lecturaCatalogo(["id_anaquel", "codigo"]), require("./anaqueles"));
+app.use("/historial", soloAlmacen, require("./Historial"));
 app.use("/notasEntrada", soloAlmacen, require("./notasEntrada"));
 app.use("/prestamos", soloAlmacen, require("./prestamo"));
 app.use("/Notas", soloAlmacen, require("./pdfNota"), require("./Notas"));

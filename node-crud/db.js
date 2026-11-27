@@ -78,6 +78,29 @@ class Peticion {
 }
 
 // =====================================================
+// TRANSACCIONES
+// Uso:  await pool.transaccion(async (request) => {
+//           await request().input("id", 1).query("...");
+//       });
+// Si algo lanza un error se hace ROLLBACK de todo.
+// =====================================================
+
+async function transaccion(pgPool, trabajo) {
+    const cliente = await pgPool.connect();
+    try {
+        await cliente.query("BEGIN");
+        const resultado = await trabajo(() => new Peticion(cliente));
+        await cliente.query("COMMIT");
+        return resultado;
+    } catch (error) {
+        try { await cliente.query("ROLLBACK"); } catch (_) { }
+        throw error;
+    } finally {
+        cliente.release();
+    }
+}
+
+// =====================================================
 // CONEXIÓN ÚNICA
 // =====================================================
 
@@ -102,6 +125,7 @@ async function getPool() {
     }
 
     return {
+        transaccion: (trabajo) => transaccion(pool, trabajo),
         request: () => new Peticion(pool),
         query: (texto, valores) => pool.query(texto, valores)
     };

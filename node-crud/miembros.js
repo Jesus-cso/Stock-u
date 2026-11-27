@@ -70,7 +70,7 @@ router.get("/matricula/:matricula", async (req, res, next) => {
                     fecha_registro
                 FROM Miembros
                 WHERE matricula = @matricula
-                  AND activo = 1
+                  AND activo::int = 1
             `);
 
         if (result.recordset.length === 0) {
@@ -211,7 +211,6 @@ router.post("/", async (req, res, next) => {
                     area,
                     telefono
                 )
-                OUTPUT INSERTED.id_miembro
                 VALUES
                 (
                     @matricula,
@@ -219,6 +218,7 @@ router.post("/", async (req, res, next) => {
                     @area,
                     @telefono
                 )
+                RETURNING id_miembro
             `);
 
         res.status(201).json({

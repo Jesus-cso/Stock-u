@@ -39,8 +39,8 @@ router.post("/", async (req, res, next) => {
             .input("contenido", sql.NVarChar(150), contenido ? String(contenido).trim() : null)
             .query(`
                 INSERT INTO Anaqueles (codigo, ubicacion, descripcion, contenido)
-                OUTPUT INSERTED.id_anaquel
                 VALUES (@codigo, @ubicacion, @descripcion, @contenido)
+                RETURNING id_anaquel
             `);
 
         res.status(201).json({
@@ -51,7 +51,7 @@ router.post("/", async (req, res, next) => {
         console.error("Error creando anaquel:", error);
 
         // Error de clave duplicada (unique constraint)
-        if (error.number === 2627) {
+        if (error.code === "23505") {
             return res.status(409).json({
                 error: "Ya existe un anaquel con ese nombre/código. Usa uno diferente."
             });
@@ -103,7 +103,7 @@ router.put("/:id", async (req, res, next) => {
     } catch (error) {
         console.error("Error actualizando anaquel:", error);
 
-        if (error.number === 2627) {
+        if (error.code === "23505") {
             return res.status(409).json({
                 error: "Ya existe un anaquel con ese nombre/código."
             });

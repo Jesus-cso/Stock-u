@@ -9,7 +9,7 @@ const router = express.Router();
 ===================================*/
 async function generarFolio(request) {
     const result = await request.query(`
-        SELECT NEXT VALUE FOR FolioSeq AS numero
+        SELECT nextval('folioseq') AS numero
     `);
     const numero = result.recordset[0].numero;
     return "F-" + String(numero).padStart(6, "0");
@@ -24,10 +24,10 @@ router.get("/siguientes-consecutivos", async (req, res, next) => {
         const pool = await getPool();
         // Puedes adaptar esta consulta según cómo guardes tus folios o requisiciones en la BD
         const rReq = await pool.request().query(`
-            SELECT TOP 1 requisicion FROM NotasEntrada WHERE requisicion LIKE 'R-%' ORDER BY id_nota DESC
+            SELECT requisicion FROM NotasEntrada WHERE requisicion LIKE 'R-%' ORDER BY id_nota DESC LIMIT 1
         `);
         const rFac = await pool.request().query(`
-            SELECT TOP 1 factura FROM NotasEntrada WHERE factura LIKE 'F-%' ORDER BY id_nota DESC
+            SELECT factura FROM NotasEntrada WHERE factura LIKE 'F-%' ORDER BY id_nota DESC LIMIT 1
         `);
 
         // Generar siguiente valor numérico básico de ejemplo
@@ -86,11 +86,11 @@ async function existeRegistro(pool, tabla, columna, id) {
 }
 
 function mensajeFK(error) {
-    const m = error.message || "";
-    if (m.includes("FK_NotaMiembro")) return "El miembro indicado no existe en Miembros.";
-    if (m.includes("FK_NotaProveedor")) return "El proveedor seleccionado no existe.";
-    if (m.includes("FK_NotasEntrada_Proyectos")) return "El proyecto seleccionado no existe.";
-    if (m.includes("FK_DetalleProducto")) return "Uno de los productos de la nota no existe.";
+    const m = `${error.constraint || ""} ${error.message || ""}`.toLowerCase();
+    if (m.includes("fk_notamiembro")) return "El miembro indicado no existe en Miembros.";
+    if (m.includes("fk_notaproveedor")) return "El proveedor seleccionado no existe.";
+    if (m.includes("fk_notasentrada_proyectos")) return "El proyecto seleccionado no existe.";
+    if (m.includes("fk_detalleproducto")) return "Uno de los productos de la nota no existe.";
     return null;
 }
 
@@ -144,9 +144,9 @@ router.get("/:id", async (req, res, next) => {
                     n.id_proyecto, pr.numero_proyecto,
                     CASE
                         WHEN pr.id_proyecto IS NULL THEN NULL
-                        ELSE pr.numero_proyecto +
-                             CASE WHEN ISNULL(pr.nombre, '') <> ''
-                                  THEN ' - ' + pr.nombre ELSE '' END
+                        ELSE pr.numero_proyecto::text ||
+                             CASE WHEN COALESCE(pr.nombre, '') <> ''
+                                  THEN ' - ' || pr.nombre ELSE '' END
                     END AS proyecto,
                     ml.nombre AS lider_proyecto,
                     n.requisicion, n.factura,
@@ -189,10 +189,8 @@ router.get("/:id", async (req, res, next) => {
     POST /notasEntrada
 ===================================*/
 router.post("/", async (req, res, next) => {
-    let transaction;
     try {
         const pool = await getPool();
-        transaction = new sql.Transaction(pool);
 
         const { id_proveedor, id_miembro, id_proyecto, observaciones, productos } = req.body;
 
@@ -237,11 +235,18 @@ router.post("/", async (req, res, next) => {
             return res.status(400).json({ error: `El proyecto con id ${idProyecto} no existe.` });
         }
 
-        await transaction.begin();
+        for (const item of productos) {
+            if (!Number.isInteger(Number(item.id_producto)) || Number(item.id_producto) <= 0
+                || !Number.isInteger(Number(item.cantidad)) || Number(item.cantidad) <= 0) {
+                return res.status(400).json({ error: "Cada producto necesita id_producto y cantidad válidos." });
+            }
+        }
 
-        const folio = await generarFolio(new sql.Request(transaction));
+        const notaCreada = await pool.transaccion(async (request) => {
 
-        const resultNota = await new sql.Request(transaction)
+        const folio = await generarFolio(request());
+
+        const resultNota = await request()
             .input("folio", sql.NVarChar(20), folio)
             .input("id_proveedor", sql.Int, idProveedor)
             .input("id_miembro", sql.Int, idMiembro)
@@ -259,20 +264,20 @@ router.post("/", async (req, res, next) => {
                     requisicion, factura, fuente_financiamiento,
                     tipo_financiamiento, num_pedido, orden_compra
                 )
-                OUTPUT INSERTED.id_nota, INSERTED.folio, INSERTED.fecha
                 VALUES (
                     @folio, @id_proveedor, @id_miembro, @id_proyecto, @observaciones,
                     @requisicion, @factura, @fuente,
                     @tipo_fin, @num_pedido, @orden_compra
                 )
+                RETURNING id_nota, folio, fecha
             `);
 
-        const notaCreada = resultNota.recordset[0];
+        const creada = resultNota.recordset[0];
 
         for (const item of productos) {
             const unidadLimpia = item.unidad ? String(item.unidad).trim() || null : null;
-            await new sql.Request(transaction)
-                .input("id_nota", sql.Int, notaCreada.id_nota)
+            await request()
+                .input("id_nota", sql.Int, creada.id_nota)
                 .input("id_producto", sql.Int, item.id_producto)
                 .input("cantidad", sql.Int, item.cantidad)
                 .input("precio_unitario", sql.Decimal(10, 2), Number(item.precio_unitario ?? 0))
@@ -283,7 +288,8 @@ router.post("/", async (req, res, next) => {
                 `);
         }
 
-        await transaction.commit();
+        return creada;
+        });
 
         res.status(201).json({
             mensaje: "Nota de entrada registrada correctamente.",
@@ -294,11 +300,8 @@ router.post("/", async (req, res, next) => {
         });
 
     } catch (error) {
-        if (transaction) {
-            try { await transaction.rollback(); } catch (_) { }
-        }
         if (error.status400) return res.status(400).json({ error: error.message });
-        if (error.number === 547) {
+        if (error.code === "23503") {
             const mensaje = mensajeFK(error);
             if (mensaje) return res.status(400).json({ error: mensaje });
         }

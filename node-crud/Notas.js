@@ -75,7 +75,7 @@ router.get(["/", "/salida"], async (req, res, next) => {
     - Bloquea la fila de cada producto mientras valida el stock,
       así dos capturistas no pueden sacar el mismo último producto.
     - Inserta cada producto/cantidad en Salidas, ligado a esa Nota.
-    - El trigger TR_ActualizarStockSalida descuenta el stock solo.
+    - Descuenta el stock (con trigger en la base o desde aquí).
     - Todo dentro de una transacción: si algo falla, no se guarda nada.
 ===================================*/
 router.post("/salida", async (req, res, next) => {
@@ -105,18 +105,15 @@ router.post("/salida", async (req, res, next) => {
         }
     }
 
-    let transaction;
-
     try {
 
         const pool = await getPool();
 
-        transaction = new sql.Transaction(pool);
-        await transaction.begin();
+        const guardada = await pool.transaccion(async (request) => {
 
         // ---- Folio (secuencia compartida FolioSeq) ----
-        const folioResult = await new sql.Request(transaction)
-            .query(`SELECT NEXT VALUE FOR FolioSeq AS numero`);
+        const folioResult = await request()
+            .query(`SELECT nextval('folioseq') AS numero`);
 
         const folio = "UPT-S-" + folioResult.recordset[0].numero;
 
@@ -127,7 +124,7 @@ router.post("/salida", async (req, res, next) => {
         if (numero_proyecto !== undefined && numero_proyecto !== null
             && String(numero_proyecto).trim() !== "") {
 
-            const proy = await new sql.Request(transaction)
+            const proy = await request()
                 .input("numero", sql.NVarChar(30), String(numero_proyecto).trim())
                 .query(`
                     SELECT p.id_proyecto, m.nombre AS lider
@@ -145,7 +142,7 @@ router.post("/salida", async (req, res, next) => {
         }
 
         // ---- Encabezado ----
-        const notaResult = await new sql.Request(transaction)
+        const notaResult = await request()
             .input("matricula", sql.NVarChar(30), String(matricula).trim())
             .input("nombre", sql.NVarChar(150), String(nombre).trim())
             .input("area", sql.NVarChar(100), area ? String(area).trim() : null)
@@ -154,8 +151,8 @@ router.post("/salida", async (req, res, next) => {
             .input("id_usuario", sql.Int, req.usuario.id_usuario)
             .query(`
                 INSERT INTO Notas (matricula, nombre, area, folio, id_proyecto, id_usuario)
-                OUTPUT INSERTED.id_nota
                 VALUES (@matricula, @nombre, @area, @folio, @id_proyecto, @id_usuario)
+                RETURNING id_nota
             `);
 
         const idNota = notaResult.recordset[0].id_nota;
@@ -163,12 +160,13 @@ router.post("/salida", async (req, res, next) => {
         // ---- Renglones (con candado sobre el producto) ----
         for (const item of items) {
 
-            const stockActual = await new sql.Request(transaction)
+            const stockActual = await request()
                 .input("id_producto", sql.Int, item.id_producto)
                 .query(`
                     SELECT stock, nombre
-                    FROM Productos WITH (UPDLOCK, HOLDLOCK)
+                    FROM Productos
                     WHERE id_producto = @id_producto
+                    FOR UPDATE
                 `);
 
             if (stockActual.recordset.length === 0) {
@@ -183,7 +181,7 @@ router.post("/salida", async (req, res, next) => {
                 );
             }
 
-            await new sql.Request(transaction)
+            await request()
                 .input("id_producto", sql.Int, item.id_producto)
                 .input("cantidad", sql.Int, item.cantidad)
                 .input("id_nota", sql.Int, idNota)
@@ -191,27 +189,33 @@ router.post("/salida", async (req, res, next) => {
                     INSERT INTO Salidas (id_producto, cantidad, id_nota)
                     VALUES (@id_producto, @cantidad, @id_nota)
                 `);
+
+            // Si la base tiene un trigger que descuenta el stock, ya cambió.
+            // Si no lo tiene, se descuenta aquí (así nunca se descuenta doble).
+            await request()
+                .input("id_producto", sql.Int, item.id_producto)
+                .input("cantidad", sql.Int, item.cantidad)
+                .input("antes", sql.Int, stock)
+                .query(`
+                    UPDATE Productos SET stock = stock - @cantidad
+                    WHERE id_producto = @id_producto AND stock = @antes
+                `);
         }
 
-        await transaction.commit();
-
-        res.status(201).json({
-            mensaje: "Nota de salida guardada correctamente.",
+        return {
             id_nota: idNota,
             folio,
             id_proyecto: idProyecto,
             lider_proyecto: liderProyecto
+        };
+        });
+
+        res.status(201).json({
+            mensaje: "Nota de salida guardada correctamente.",
+            ...guardada
         });
 
     } catch (error) {
-
-        if (transaction) {
-            try {
-                await transaction.rollback();
-            } catch (errorRollback) {
-                console.error("❌ Error al hacer rollback:", errorRollback);
-            }
-        }
 
         // Errores de negocio -> 400 en vez de 500
         if (error.message && (
@@ -235,8 +239,6 @@ router.post("/salida", async (req, res, next) => {
       motivo, fecha y quién la canceló.
     - Si la nota ya estaba cancelada, responde 400.
 
-    OJO: si tu trigger TR_ActualizarStockSalida también se dispara en
-    UPDATE/DELETE sobre Salidas, revísalo; aquí no se toca Salidas.
 ===================================*/
 router.put("/:id/cancelar", async (req, res, next) => {
 
@@ -251,18 +253,15 @@ router.put("/:id/cancelar", async (req, res, next) => {
         return res.status(400).json({ error: "Escribe el motivo de la cancelación." });
     }
 
-    let transaction;
-
     try {
 
         const pool = await getPool();
 
-        transaction = new sql.Transaction(pool);
-        await transaction.begin();
+        await pool.transaccion(async (request) => {
 
-        const nota = await new sql.Request(transaction)
+        const nota = await request()
             .input("id", sql.Int, idNota)
-            .query(`SELECT estado FROM Notas WITH (UPDLOCK, HOLDLOCK) WHERE id_nota = @id`);
+            .query(`SELECT estado FROM Notas WHERE id_nota = @id FOR UPDATE`);
 
         if (nota.recordset.length === 0) {
             throw new Error("La nota no existe.");
@@ -272,46 +271,38 @@ router.put("/:id/cancelar", async (req, res, next) => {
             throw new Error("La nota ya estaba cancelada.");
         }
 
-        await new sql.Request(transaction)
+        await request()
             .input("id", sql.Int, idNota)
             .query(`
-                UPDATE p
-                SET p.stock = p.stock + s.total
-                FROM Productos p
-                JOIN (
+                UPDATE Productos AS p
+                SET stock = p.stock + s.total
+                FROM (
                     SELECT id_producto, SUM(cantidad) AS total
                     FROM Salidas
                     WHERE id_nota = @id
                     GROUP BY id_producto
-                ) s ON s.id_producto = p.id_producto
+                ) s
+                WHERE s.id_producto = p.id_producto
             `);
 
-        await new sql.Request(transaction)
+        await request()
             .input("id", sql.Int, idNota)
             .input("motivo", sql.NVarChar(200), motivo.slice(0, 200))
             .input("por", sql.Int, req.usuario.id_usuario)
             .query(`
                 UPDATE Notas
                 SET estado = 'cancelada',
-                    fecha_cancelacion = GETDATE(),
+                    fecha_cancelacion = NOW(),
                     motivo_cancelacion = @motivo,
                     cancelada_por = @por
                 WHERE id_nota = @id
             `);
 
-        await transaction.commit();
+        });
 
         res.json({ mensaje: "Nota cancelada y stock devuelto." });
 
     } catch (error) {
-
-        if (transaction) {
-            try {
-                await transaction.rollback();
-            } catch (errorRollback) {
-                console.error("❌ Error al hacer rollback:", errorRollback);
-            }
-        }
 
         if (error.message && (
             error.message.includes("no existe") ||

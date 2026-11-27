@@ -9,9 +9,9 @@ const router = express.Router();
     así la forma del JSON es idéntica en ambos lados)
 ===================================*/
 
-// "Hoy" sin envolver la columna en CAST, para que SQL Server pueda usar índices
+// "Hoy" sin envolver la columna en CAST, para poder usar índices
 const HOY = (col) =>
-    `${col} >= CAST(GETDATE() AS DATE) AND ${col} < DATEADD(DAY, 1, CAST(GETDATE() AS DATE))`;
+    `${col} >= CURRENT_DATE AND ${col} < CURRENT_DATE + INTERVAL '1 day'`;
 
 async function getAlertasStock(pool) {
     const result = await pool.request().query(`
@@ -156,7 +156,7 @@ async function getAlertasPrestamos(pool) {
             p.nombre AS producto,
             CASE
                 WHEN pr.fecha_devolucion_esp IS NOT NULL
-                     AND pr.fecha_devolucion_esp < CAST(GETDATE() AS DATE)
+                     AND pr.fecha_devolucion_esp < CURRENT_DATE
                 THEN 1 ELSE 0
             END AS vencido
         FROM Prestamos pr
@@ -281,7 +281,7 @@ router.put("/solicitudes/:id", async (req, res, next) => {
             .input("estado", sql.NVarChar(30), estado)
             .query(`
                 UPDATE Solicitudes
-                SET estado = @estado, fecha_respuesta = GETDATE()
+                SET estado = @estado, fecha_respuesta = NOW()
                 WHERE id_solicitud = @id AND estado = 'pendiente'
             `);
 

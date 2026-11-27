@@ -730,6 +730,7 @@
 </head>
 
 <body>
+    <script src="sesion.js"></script>
 
     <aside class="sidebar">
         <div class="sidebar-logo">
@@ -1073,15 +1074,7 @@
         // Se comprueba localStorage y sessionStorage para tolerar ambas formas
         // de persistencia. Si tu login usa otra clave, agrégala aquí.
         function obtenerToken() {
-            return (
-                localStorage.getItem("token") ||
-                sessionStorage.getItem("token") ||
-                localStorage.getItem("accessToken") ||
-                sessionStorage.getItem("accessToken") ||
-                localStorage.getItem("jwt") ||
-                sessionStorage.getItem("jwt") ||
-                ""
-            ).trim();
+            return window.Sesion.token() || "";
         }
 
         async function fetchAutenticado(url, opciones = {}) {

@@ -52,7 +52,7 @@
     }
 
     function esRutaSinLogout(url) {
-        var ruta = url.slice(API.length).split("?")[0].split("#")[0];
+        var ruta = new URL(url, location.href).pathname.replace(/^\/api(?=\/)/, "");
         return RUTAS_SIN_LOGOUT.some(function (r) {
             return ruta === r || ruta.indexOf(r + "/") === 0;
         });
@@ -75,8 +75,11 @@
 
     window.fetch = function (entrada, opciones) {
         var url = typeof entrada === "string" ? entrada : (entrada && entrada.url) || "";
-        var esApi = url.indexOf(API) === 0;
-        var esLogin = url.indexOf(API + "/auth/") === 0;
+        // Solo nuestra API recibe el token (nunca sitios externos)
+        var destino = new URL(url, location.href);
+        var origenApi = new URL(API || "/", location.href).origin;
+        var esApi = destino.origin === origenApi;
+        var esLogin = esApi && /^\/(api\/)?(auth|crearrouter)\//.test(destino.pathname);
 
         if (esApi && !esLogin) {
             opciones = opciones || {};

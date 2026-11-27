@@ -30,13 +30,10 @@ router.get("/", async (req, res, next) => {
         const { tipo, mes } = req.query;
         const pool = await getPool();
 
-        // Nombres de mes en español para traducir DATENAME(month, fecha)
-        const mesesEs = {
-            January: "Enero", February: "Febrero", March: "Marzo",
-            April: "Abril", May: "Mayo", June: "Junio",
-            July: "Julio", August: "Agosto", September: "Septiembre",
-            October: "Octubre", November: "Noviembre", December: "Diciembre"
-        };
+        const meses = [
+            "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+            "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+        ];
 
         const result = await pool.request().query(`
             SELECT
@@ -45,7 +42,7 @@ router.get("/", async (req, res, next) => {
                 pr.nombre AS producto,
                 d.cantidad,
                 n.fecha,
-                DATENAME(MONTH, n.fecha) AS mes_en
+                EXTRACT(MONTH FROM n.fecha)::int AS mes_num
             FROM NotasEntrada n
             INNER JOIN DetalleNotaEntrada d ON d.id_nota = n.id_nota
             INNER JOIN Productos pr ON pr.id_producto = d.id_producto
@@ -58,7 +55,7 @@ router.get("/", async (req, res, next) => {
                 pr.nombre AS producto,
                 s.cantidad,
                 n.fecha,
-                DATENAME(MONTH, n.fecha) AS mes_en
+                EXTRACT(MONTH FROM n.fecha)::int AS mes_num
             FROM Notas n
             INNER JOIN Salidas s   ON s.id_nota = n.id_nota
             INNER JOIN Productos pr ON pr.id_producto = s.id_producto
@@ -73,7 +70,7 @@ router.get("/", async (req, res, next) => {
             producto: row.producto,
             cantidad: row.cantidad,
             fecha: row.fecha,
-            mes: mesesEs[row.mes_en] || row.mes_en,
+            mes: meses[row.mes_num - 1],
             // TODO: reemplazar por columnas reales cuando existan
             aprobado: true,
             aTiempo: true

@@ -117,7 +117,7 @@ router.post("/registro", async (req, res, next) => {
     } catch (error) {
 
         // PostgreSQL unique_violation (23505) si dos registros chocan al mismo tiempo
-        if (error.code === "23505" || error.number === 2627 || error.number === 2601) {
+        if (error.code === "23505") {
             return res.status(400).json({
                 error: "El número de control ya se encuentra registrado."
             });

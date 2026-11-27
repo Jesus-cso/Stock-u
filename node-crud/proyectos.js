@@ -103,8 +103,8 @@ router.post("/", async (req, res, next) => {
             .input("id_lider", sql.Int, lider.recordset[0].id_miembro)
             .query(`
                 INSERT INTO Proyectos (numero_proyecto, nombre, id_lider)
-                OUTPUT INSERTED.id_proyecto
                 VALUES (@numero, @nombre, @id_lider)
+                RETURNING id_proyecto
             `);
 
         res.status(201).json({
