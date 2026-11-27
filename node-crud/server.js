@@ -23,20 +23,8 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
 
 const esProduccion = process.env.NODE_ENV === "production";
 
-const rolesAlmacen = (process.env.ROLES_ALMACEN || "Admin,Almacenista")
-    .split(",")
-    .map(s => s.trim())
-    .filter(Boolean);
-
-if (rolesAlmacen.length === 0) {
-    console.error("ROLES_ALMACEN no tiene ningun rol valido.");
-    process.exit(1);
-}
-
 const verificarToken = require("./verificarToken");
 const todos = verificarToken();
-const soloAlmacen = verificarToken(rolesAlmacen);
-const lecturaCatalogo = require("./lecturaCatalogo")(rolesAlmacen);
 
 function claveEscanerValida(req) {
     const esperada = process.env.ESCANER_TOKEN || "";
@@ -144,12 +132,13 @@ app.use("/alertas", todos, require("./alertas"));
 app.use("/proyectos", todos, require("./proyectos"));
 app.use("/escaneos", jwtOClaveEscaner, require("./Escaneos"));
 
-app.use("/proveedores", lecturaCatalogo(["id_proveedor", "nombre"]), require("./proveedores"));
-app.use("/anaqueles", lecturaCatalogo(["id_anaquel", "codigo"]), require("./anaqueles"));
-app.use("/historial", soloAlmacen, require("./Historial"));
-app.use("/notasEntrada", soloAlmacen, require("./notasEntrada"));
-app.use("/prestamos", soloAlmacen, require("./prestamo"));
-app.use("/Notas", soloAlmacen, require("./pdfNota"), require("./Notas"));
+// Todas las rutas protegidas solo por token válido (cualquier rol tiene los mismos permisos)
+app.use("/proveedores", todos, require("./proveedores"));
+app.use("/anaqueles", todos, require("./anaqueles"));
+app.use("/historial", todos, require("./Historial"));
+app.use("/notasEntrada", todos, require("./notasEntrada"));
+app.use("/prestamos", todos, require("./prestamo"));
+app.use("/Notas", todos, require("./pdfNota"), require("./Notas"));
 
 const movil = require("./movil");
 movil.montar(app);
